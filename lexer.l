@@ -1,11 +1,12 @@
 %{
 #include "Parser.hpp"
 #include "Scanner.hpp"
-#include "fstream"
-#define YY_DECL int calc::Scanner::lex(calc::Parser::semantic_type *yylval)
+
+#undef YY_DECL
+#define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval)
 %}
  
-%option c++ interactive noyywrap noyylineno nodefault outfile="Scanner.cpp"
+%option c++ interactive noyywrap noyylineno nodefault
  
 dseq            ([[:digit:]]+)
 dseq_opt        ({dseq}?)

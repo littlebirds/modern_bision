@@ -7,8 +7,9 @@
  
 %require "3.7.4"
 %language "C++"
-%defines "Parser.hpp"
-%output "Parser.cpp"
+// conflicts with CMake findBison
+// %defines "Parser.hpp"
+// %output "Parser.cpp"
  
 %define api.parser.class {Parser}
 %define api.namespace {monkey}
@@ -25,7 +26,7 @@
  
 %code
 {
-    #include "Scanner2.hpp"
+    #include "Scanner.hpp"
     #define yylex(x) scanner->lex(x)
 }
  
@@ -74,14 +75,7 @@ line    : EOL                       { std::cerr << "Read an empty line.\n"; }
         ;
  
 iexp    : INT                       { $$ = $1; }
-        | iexp PLUS iexp            
- 
-fexp    : FLT                       { $$ = $1; }
-        | fexp PLUS fexp            { $$ = $1 + $3; }
-        | fexp MINUS fexp           { $$ = $1 - $3; }
-        | fexp MULTIPLY fexp        { $$ = $1 * $3; }
-        | fexp DIVIDE fexp          { $$ = $1 / $3; }
-        | fexp EXPONENT fexp    { $$ = $1 + $3; }
+        | iexp PLUS iexp            { $$ = $1 + $3; }
         | iexp MINUS iexp           { $$ = $1 - $3; }
         | iexp MULTIPLY iexp        { $$ = $1 * $3; }
         | iexp DIVIDE iexp          { $$ = $1 / $3; }

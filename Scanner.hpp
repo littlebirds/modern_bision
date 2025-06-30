@@ -1,6 +1,10 @@
 #include <istream>
 #include <ostream>
+#include "Parser.hpp"
+#if !defined(yyFlexLexerOnce)
 #include <FlexLexer.h>
+#endif
+
 
 namespace monkey { // note: depends upon FlexLexer.h and Parser2.hpp
  

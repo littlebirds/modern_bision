@@ -7,8 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 find_package(BISON)
 find_package(FLEX)
-bison_target(MonkeyParser grammar.y)
-flex_target(MonkeyScanner lexer.l)
+bison_target(MonkeyParser grammar.y Parser.cpp DEFINES_FILE Parser.hpp)
+flex_target(MonkeyScanner lexer.l Scanner.cpp)
 add_flex_bison_dependency(MonkeyScanner MonkeyParser)
 
 add_executable(parser main.cpp ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
+target_include_directories(parser PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
