@@ -30,7 +30,7 @@
     #define yylex(x) scanner->lex(x)
 }
  
-%token              EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON COMMA
+%token              EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON COMMA DOT
 %token              LET FUNCTION FOR RETURN IF ELSE ELIF
 %token              TRUE FALSE
 %token <long long>  INTEGER
@@ -41,6 +41,10 @@
 %nterm <double>     fexp
  
 %nonassoc           ASSIGN
+%left               OR
+%left               AND
+%nonassoc           NOT
+%nonassoc           GT LT GE LE EQ NOT_EQ
 %left               PLUS MINUS
 %left               MULTIPLY DIVIDE MODULO
 %precedence         UMINUS
@@ -50,8 +54,6 @@
 %code
 {
     namespace monkey {
-        long long ivars['Z' - 'A' + 1];
-        double fvars['z' - 'a' + 1];
  
         long long factorial(long long n) {
             if (n < 2) {

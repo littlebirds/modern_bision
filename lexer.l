@@ -31,7 +31,16 @@ var          ([:alpha:][[:alnum:]_]*)
 "elif"          return Parser::token::ELIF;
 "true"          return Parser::token::TRUE;
 "false"         return Parser::token::FALSE;
-{intvar}        { yylval->emplace<std::string>(YYText()); return Parser::token::VAR; }
+{tvar}        { yylval->emplace<std::string>(YYText()); return Parser::token::VAR; }
+"and"           return Parser::token::AND;
+"or"            return Parser::token::OR;
+"not"           return Parser::token::NOT;
+"<="            return Parser::token:LE;
+">="            return Parser::token::GE;
+"=="            return Parser::token::EQ;
+"!="            return Parser::token::NOT_EQ;
+"<"             return Parser::token:LT;
+">"             return Parser::token::GT;
 "+"             return Parser::token::PLUS;
 "-"             return Parser::token::MINUS;
 "*"             return Parser::token::MULTIPLY;
@@ -48,6 +57,7 @@ var          ([:alpha:][[:alnum:]_]*)
 ":"             return Parser::token::COLON;
 ","             return Parser::token::COMMA;
 "="             return Parser::token::ASSIGN;
+"."             return Parser::token::DOT;
 \n              return Parser::token::EOL;
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */
