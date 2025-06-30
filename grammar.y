@@ -30,10 +30,12 @@
     #define yylex(x) scanner->lex(x)
 }
  
-%token              EOL LPAREN RPAREN
-%token <long long>  INT
-%token <double>     FLT
-%token <char>       INTVAR FLTVAR
+%token              EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON COMMA
+%token              LET FUNCTION FOR RETURN IF ELSE ELIF
+%token              TRUE FALSE
+%token <long long>  INTEGER
+%token <double>     FLOAT
+%token <std::string> VAR
  
 %nterm <long long>  iexp
 %nterm <double>     fexp
