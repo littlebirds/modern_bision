@@ -15,7 +15,7 @@
 %define api.namespace {monkey}
 %define api.value.type variant
 %define parse.assert
-%parse-param {Scanner* scanner}
+%parse-param {Scanner* scanner} {ast::Node*& ppRoot}
  
 %code requires
 {
@@ -23,6 +23,7 @@
 
     namespace monkey {
         class Scanner;
+        class ast::Node;
     } // namespace monkey
 } // %code requires
  
@@ -43,6 +44,7 @@
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::Program>>           program
+%nterm                                           start
 unique_ptr
 %nonassoc             ASSIGN
 %left                 OR
@@ -54,7 +56,9 @@ unique_ptr
 %precedence           UMINUS
 %precedence           FACTORIAL
 %right                EXPONENT
- 
+
+%start start
+
 %code
 {
     namespace monkey {
@@ -69,8 +73,9 @@ unique_ptr
 } // %code
  
 %%
- 
-program : %empty                    { printf($$->str().c_str()); }
+start   : program                   { this->ppRoot = $1.release(); }
+        ;
+program : %empty                    { $$ = std::make_unique<ast::Program>(); }
         | program stmt              { $1->appendStmt(std::move($2)); $$ = std::move($1); }
         ;
  
