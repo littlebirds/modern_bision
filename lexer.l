@@ -16,8 +16,8 @@ exp_opt         ({exp}?)
  
 integer         ({dseq})
 float           (({frac}{exp_opt})|({dseq}{exp}))
-var          ([:alpha:][[:alnum:]_]*)
- 
+identifier      ([:alpha:][[:alnum:]_]*)
+
 %%
  
 {integer}       { yylval->emplace<long long>(strtoll(YYText(), nullptr, 10)); return Parser::token::INTEGER; }
@@ -31,15 +31,14 @@ var          ([:alpha:][[:alnum:]_]*)
 "elif"          return Parser::token::ELIF;
 "true"          return Parser::token::TRUE;
 "false"         return Parser::token::FALSE;
-{tvar}        { yylval->emplace<std::string>(YYText()); return Parser::token::VAR; }
 "and"           return Parser::token::AND;
 "or"            return Parser::token::OR;
 "not"           return Parser::token::NOT;
-"<="            return Parser::token:LE;
+"<="            return Parser::token::LE;
 ">="            return Parser::token::GE;
 "=="            return Parser::token::EQ;
 "!="            return Parser::token::NOT_EQ;
-"<"             return Parser::token:LT;
+"<"             return Parser::token::LT;
 ">"             return Parser::token::GT;
 "+"             return Parser::token::PLUS;
 "-"             return Parser::token::MINUS;
@@ -59,6 +58,7 @@ var          ([:alpha:][[:alnum:]_]*)
 "="             return Parser::token::ASSIGN;
 "."             return Parser::token::DOT;
 \n              return Parser::token::EOL;
+{identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */
  

@@ -5,7 +5,7 @@
 
 int main() {
     std::ifstream inputFile; // Declare the ifstream object
-    inputFile.open("input.txt"); // 
+    inputFile.open("test.txt"); // 
     monkey::Scanner scanner{inputFile , std::cerr };
     monkey::Parser parser{ &scanner };
     std::cout.precision(10);
