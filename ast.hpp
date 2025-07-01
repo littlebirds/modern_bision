@@ -12,57 +12,49 @@ struct Node {
     virtual std::string str() const = 0;
 };
 
-struct Expr : public Node {
-    virtual ~Expr() = default;
-    virtual std::string str() const = 0;
+struct Expr : public Node { 
 };
 
-struct Stmt : public Node {
-    virtual ~Stmt() = default;
-    virtual std::string str() const = 0;
+struct Stmt : public Node { 
 };
 
 struct Program : public Node {
     std::vector<std::unique_ptr<Stmt>> statements;
-
     Program() = default;
+    ~Program() = default;
 
     void appendStmt(std::unique_ptr<Stmt> stmt) {
         statements.push_back(std::move(stmt));
     }
 
-    std::string str() const override {
-        std::string result {"program: \n"};
-        for (const auto& stmt : statements) {
-            result.append(stmt->str() + "\n");
-        }
-        return result;
-    }
+    std::string str() const override;
 };
 
 struct IntLitExpr : public Expr {
     long long value;
 
     IntLitExpr(long long value) : value(value) {}
-    std::string str() const override {
-        return std::to_string(value);   
-    }
+    ~IntLitExpr() = default;
+
+    std::string str() const override;
 };
 
 struct FloatLitExpr : public Expr {
     double value;
+    
     FloatLitExpr(double value) : value(value) {}
-    std::string str() const override {
-        return std::to_string(value);
-    }
+    ~FloatLitExpr() = default;
+
+    std::string str() const override;
 }; 
 
 struct StringLitExpr : public Expr {
     std::string value;
+    
     StringLitExpr(std::string value) : value(std::move(value)) {}
-    std::string str() const override {
-        return "\"" + value + "\"";
-    }
+    ~StringLitExpr() = default;
+    
+    std::string str() const override;
 };
 
 struct BinOpExpr : public Expr {
@@ -72,20 +64,18 @@ struct BinOpExpr : public Expr {
 
     BinOpExpr(std::unique_ptr<Expr> left, std::unique_ptr<Expr> right, const char* op)
         : left(std::move(left)), right(std::move(right)), op(op) {}
+    ~BinOpExpr() = default;
 
-    std::string str() const override {
-        return "(" + left->str() + " " + std::string(op) + " " + right->str() + ")";
-    }
+    std::string str() const override;
 };
 
 struct ExprStmt : public Stmt {
-    std::unique_ptr<Expr> expr;
+    std::unique_ptr<Expr> stmt;
 
-    ExprStmt(std::unique_ptr<Expr> expr) : expr(std::move(expr)) {}
+    ExprStmt(std::unique_ptr<Expr> expr) : stmt(std::move(expr)) {}
+    ~ExprStmt() = default;
 
-    std::string str() const override {
-        return expr->str() + ";";
-    }
+    std::string str() const override;
 };
 
 } // namespace ast

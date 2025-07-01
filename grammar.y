@@ -19,11 +19,10 @@
  
 %code requires
 {
-    #include "AST.hpp"
+    #include "ast.hpp"
 
     namespace monkey {
         class Scanner;
-        class ast::Node;
     } // namespace monkey
 } // %code requires
  
@@ -33,7 +32,7 @@
     #define yylex(x) scanner->lex(x)
 }
  
-%token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON COMMA DOT
+%token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token <long long>              INTEGER
@@ -59,19 +58,6 @@ unique_ptr
 
 %start start
 
-%code
-{
-    namespace monkey {
- 
-        long long factorial(long long n) {
-            if (n < 2) {
-                return 1;
-            }
-            return n * factorial(n - 1);
-        }
-    } // namespace monkey
-} // %code
- 
 %%
 start   : program                   { this->ppRoot = $1.release(); }
         ;

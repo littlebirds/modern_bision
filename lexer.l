@@ -54,6 +54,7 @@ identifier      ([:alpha:][[:alnum:]_]*)
 "{"             return Parser::token::LBRACE;
 "}"             return Parser::token::RBRACE;
 ":"             return Parser::token::COLON;
+";"             return Parser::token::SEMICOLON;
 ","             return Parser::token::COMMA;
 "="             return Parser::token::ASSIGN;
 "."             return Parser::token::DOT;
