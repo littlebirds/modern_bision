@@ -15,7 +15,7 @@
 %define api.namespace {monkey}
 %define api.value.type variant
 %define parse.assert
-%parse-param {Scanner* scanner} {ast::Node*& ppRoot}
+%parse-param {Scanner* scanner} {std::unique_ptr<ast::Node>& ppRoot}
  
 %code requires
 {
@@ -44,7 +44,7 @@
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::Program>>           program
 %nterm                                           start
-unique_ptr
+
 %nonassoc             ASSIGN
 %left                 OR
 %left                 AND
@@ -59,27 +59,28 @@ unique_ptr
 %start start
 
 %%
-start   : program                   { this->ppRoot = $1.release(); }
+start   : program                           { this->ppRoot =std::move($1); }
         ;
-program : %empty                    { $$ = std::make_unique<ast::Program>(); }
-        | program stmt              { $1->appendStmt(std::move($2)); $$ = std::move($1); }
-        ;
- 
-stmt    : EOL                       { ; }
-        | expr EOL                  { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); }
-    //    | error EOL                 { yyerrok; }
+program : %empty                            { $$ = std::make_unique<ast::Program>(); }
+        | program stmt                      { if ($2) { $1->appendStmt(std::move($2)); }; $$ = std::move($1); }
         ;
  
-expr    : INTEGER                   { $$ = std::make_unique<ast::IntLitExpr>($1); }
-        | FLOAT                     { $$ = std::make_unique<ast::FloatLitExpr>($1); }
-        | expr MINUS expr           { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
-        | expr PLUS expr            { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
-        | expr MULTIPLY expr        { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
-        | expr DIVIDE expr          { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
-//        | iexp MODULO iexp          { $$ = $1 % $3; }
-//        | MINUS iexp %prec UMINUS   { $$ = -$2; }
-//        | iexp FACTORIAL            { $$ = factorial($1); }
-        | LPAREN expr RPAREN        { $$ = std::move($2); }
+stmt    : EOL                               { ; }
+        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); }
+        | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
+        | error EOL                         { yyerrok; }
+        ;
+ 
+expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitExpr>($1); }
+        | FLOAT                             { $$ = std::make_unique<ast::FloatLitExpr>($1); }
+        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
+        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
+        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
+        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
+//        | iexp MODULO iexp                { $$ = $1 % $3; }
+//        | MINUS iexp %prec UMINUS         { $$ = -$2; }
+//        | iexp FACTORIAL                  { $$ = factorial($1); }
+        | LPAREN expr RPAREN                { $$ = std::move($2); }
         ;
  
 %%

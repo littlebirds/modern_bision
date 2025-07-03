@@ -70,11 +70,17 @@ struct BinOpExpr : public Expr {
 };
 
 struct ExprStmt : public Stmt {
-    std::unique_ptr<Expr> stmt;
+    std::unique_ptr<Expr> expression;
 
-    ExprStmt(std::unique_ptr<Expr> expr) : stmt(std::move(expr)) {}
-    ~ExprStmt() = default;
+    ExprStmt(std::unique_ptr<Expr> expr) : expression(std::move(expr)) {} 
+    std::string str() const override;
+};
 
+struct LetStmt : public Stmt {
+    std::string ident;
+    std::unique_ptr<Expr> value;
+
+    LetStmt(std::string ident, std::unique_ptr<Expr> value) : ident(std::move(ident)), value(std::move(value)) {}
     std::string str() const override;
 };
 

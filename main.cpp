@@ -7,8 +7,9 @@
 
 void banner() {
     std::cout << "Monkey Programming Language R.E.P.L" << std::endl;
-    std::cout << "Version 0.1" << std::endl; 
-    std::cout << "Type ctrl-c to exit." << std::endl;
+    std::cout << "Version 0.1" << "\n\n"; 
+    std::cout << "Type ctrl-D to parse input and type ctrl-c to exit REPL." << std::endl;
+    std::cout << "<---------------------------------------------------->" << std::endl;
 
 }
 
@@ -21,17 +22,34 @@ void usage() {
 }
 
 int main(int argc, char** argv) {
-    ast::Node* pAST = nullptr;
+   
     if (argc < 2) {
         usage();
         return 1;
     }
     const char* mode = argv[1];
     if (strncmp(mode, "-i", 2) == 0) {
-        banner(); 
-        monkey::Scanner scanner{std::cin, std::cerr};
-        monkey::Parser parser{ &scanner, pAST };
-        return 0; // Exit immediately for interactive mode
+        banner();
+        ast::Program app;
+        while (true) {            
+            std::unique_ptr<ast::Node> pAST;                
+            monkey::Scanner scanner{std::cin, std::cerr};            
+            monkey::Parser parser{ &scanner, pAST }; 
+            parser.parse();
+            if (pAST) {
+                std::cout << pAST->str() << std::endl;
+                if (auto pprog = dynamic_cast<ast::Program*>(pAST.get())) {
+                    for (auto& stmt: pprog->statements) {
+                        app.appendStmt(std::move(stmt));  
+                    }
+                } else {
+                    std::cerr << "Error: Expected a Program node." << std::endl;
+                }
+            } else {
+                std::cerr << "Parsing failed to produce AST." << std::endl;
+            }
+            clearerr(stdin);
+        } 
     }
 
     if (strncmp(mode, "-f", 2) == 0) {
@@ -39,6 +57,7 @@ int main(int argc, char** argv) {
             std::cerr << "Error: Missing filename argument." << std::endl;
             return 1;
         }
+         std::unique_ptr<ast::Node> pAST; 
         std::ifstream input;
         input.open(argv[2], std::ios::in);
         if (!input.is_open()) {
@@ -49,21 +68,12 @@ int main(int argc, char** argv) {
         monkey::Parser parser{ &scanner, pAST };
         parser.parse();
         if (pAST) {
-            std::cout << pAST->str() << std::endl;
-            delete pAST;
+            std::cout << pAST->str() << std::endl; 
             return 0; // Clean up the allocated memory
         } else {
             std::cerr << "Parsing failed to produce AST." << std::endl;
             return 1;
         }
     }
-
-
-    std::ifstream inputFile; // Declare the ifstream object
-    inputFile.open("test.txt"); // 
-    monkey::Scanner scanner{inputFile , std::cerr };
-    monkey::Parser parser{ &scanner, pAST };
-    std::cout.precision(10);
-    parser.parse();
     
 }
