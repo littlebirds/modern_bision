@@ -1,29 +1,31 @@
 #include "ast.hpp"
-#include "ast_visitor.hpp"  
+#include "ast_visitor.hpp"
+#include <format>  
 
-namespace ast {
+namespace ast {    
+    
     std::string IntLitExpr::str() const {
-        return "iexp(" + std::to_string(value) + ")"; 
+        return "iexp(" + literal + ")"; 
     }
 
     std::string FloatLitExpr::str() const {
-        return "fexp(" + std::to_string(value) + ")";
+        return "fexp(" + literal + ")";
     }
 
-    std::string Program::str() const {
+    std::string StringLitExpr::str() const {
+        return "\"" + literal + "\"";
+    }   
+
+    std::string BinOpExpr::str() const {
+        return "(" + left->str() + " " + std::string(op) + " " + right->str() + ")";
+    }
+
+    std::string StmtList::str() const {
         std::string result{"Program:\n"};
         for (const auto& stmt : statements) {
             result += stmt->str() + "\n";
         }
         return result;
-    }
-
-    std::string StringLitExpr::str() const {
-        return "\"" + value + "\"";
-    }   
-
-    std::string BinOpExpr::str() const {
-        return "(" + left->str() + " " + std::string(op) + " " + right->str() + ")";
     }
 
     std::string ExprStmt::str() const {
