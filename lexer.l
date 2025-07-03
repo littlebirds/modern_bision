@@ -16,15 +16,30 @@ exp_opt         ({exp}?)
  
 integer         ({dseq})
 float           (({frac}{exp_opt})|({dseq}{exp}))
-intvar          ([[:upper:]])
-fltvar          ([[:lower:]])
- 
+identifier      ([:alpha:][[:alnum:]_]*)
+
 %%
  
-{integer}       yylval->emplace<long long>(strtoll(YYText(), nullptr, 10)); return Parser::token::INT;
-{float}         yylval->emplace<double>(strtod(YYText(), nullptr)); return Parser::token::FLT;
-{intvar}        yylval->emplace<char>(YYText()[0]); return Parser::token::INTVAR;
-{fltvar}        yylval->emplace<char>(YYText()[0]); return Parser::token::FLTVAR;
+{integer}       { yylval->emplace<long long>(strtoll(YYText(), nullptr, 10)); return Parser::token::INTEGER; }
+{float}         { yylval->emplace<double>(strtod(YYText(), nullptr)); return Parser::token::FLOAT; }
+"let"           return Parser::token::LET;
+"fn"            return Parser::token::FUNCTION;
+"for"           return Parser::token::FOR;
+"return"        return Parser::token::RETURN;
+"if"            return Parser::token::IF;
+"else"          return Parser::token::ELSE;
+"elif"          return Parser::token::ELIF;
+"true"          return Parser::token::TRUE;
+"false"         return Parser::token::FALSE;
+"and"           return Parser::token::AND;
+"or"            return Parser::token::OR;
+"not"           return Parser::token::NOT;
+"<="            return Parser::token::LE;
+">="            return Parser::token::GE;
+"=="            return Parser::token::EQ;
+"!="            return Parser::token::NOT_EQ;
+"<"             return Parser::token::LT;
+">"             return Parser::token::GT;
 "+"             return Parser::token::PLUS;
 "-"             return Parser::token::MINUS;
 "*"             return Parser::token::MULTIPLY;
@@ -34,8 +49,18 @@ fltvar          ([[:lower:]])
 "^"             return Parser::token::EXPONENT;
 "("             return Parser::token::LPAREN;
 ")"             return Parser::token::RPAREN;
+"["             return Parser::token::LBRACKET;
+"]"             return Parser::token::RBRACKET;
+"{"             return Parser::token::LBRACE;
+"}"             return Parser::token::RBRACE;
+":"             return Parser::token::COLON;
+";"             return Parser::token::SEMICOLON;
+","             return Parser::token::COMMA;
 "="             return Parser::token::ASSIGN;
+"."             return Parser::token::DOT;
 \n              return Parser::token::EOL;
+\/\/[^\n]*     { /* skip single line comment */ return Parser::token::EOL; }
+{identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */
  
