@@ -21,8 +21,8 @@ identifier      ([:alpha:][[:alnum:]_]*)
 
 %%
  
-{integer}       { yylval->emplace<long long>(strtoll(YYText(), nullptr, 10)); return Parser::token::INTEGER; }
-{float}         { yylval->emplace<double>(strtod(YYText(), nullptr)); return Parser::token::FLOAT; }
+{integer}       { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_INT; }
+{float}         { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_FLOAT; }
 "let"           return Parser::token::LET;
 "fn"            return Parser::token::FUNCTION;
 "for"           return Parser::token::FOR;

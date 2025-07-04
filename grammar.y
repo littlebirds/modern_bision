@@ -33,15 +33,14 @@
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
-%token <long long>              INTEGER
+%token <std::string>            LIT_INT LIT_FLOAT LIT_STR
 %token <double>                 FLOAT
-%token <std::string>            STRING
 %token <std::string>            Ident
  
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
-%nterm <std::unique_ptr<ast::Program>>           program
-%nterm                                           start
+%nterm <std::unique_ptr<ast::StmtList>>          stmt_list
+%nterm                                           program
 
 %nonassoc             ASSIGN
 %left                 OR
@@ -54,21 +53,23 @@
 %precedence           FACTORIAL
 %right                EXPONENT
 
-%start start
+%start program
 
 %%
-start   : program                           { this->ppRoot =std::move($1); }
+program : stmt_list                           { this->ppRoot =std::move($1); }
         ;
-program : %empty                            { $$ = std::make_unique<ast::Program>(); }
-        | program stmt                      { if ($2) { $1->appendStmt(std::move($2)); }; $$ = std::move($1); }
+
+stmt_list : %empty                            { $$ = std::make_unique<ast::StmtList>(); }
+        | stmt_list stmt                      { if ($2) { $1->append(std::move($2)); }; $$ = std::move($1); }
         ;
  
 stmt    : EOL                               { ; }
         | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); @$ = @1; }
         | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
         | error EOL                         { yyerrok; }
-        ;
+        ; 
  
+<<<<<<< HEAD
 expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitExpr>($1); @$ = @1; }
         | FLOAT                             { $$ = std::make_unique<ast::FloatLitExpr>($1); @$ = @1; }
         | expr MINUS expr                   
@@ -77,6 +78,14 @@ expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitE
         | expr DIVIDE expr                  { 
                                                 $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), int($2)); 
                                             }
+=======
+expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>($1); }
+        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>($1); }
+        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
+        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
+        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
+        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
+>>>>>>> master
 //        | iexp MODULO iexp                { $$ = $1 % $3; }
 //        | MINUS iexp %prec UMINUS         { $$ = -$2; }
 //        | iexp FACTORIAL                  { $$ = factorial($1); }
