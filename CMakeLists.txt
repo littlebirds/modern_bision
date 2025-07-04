@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20) # Or a newer version like 3.28 for better C++23 module support
+cmake_minimum_required(VERSION 3.25) # Or a newer version like 3.28 for better C++23 module support
 
 project(Monkey LANGUAGES CXX)
 

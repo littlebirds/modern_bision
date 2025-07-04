@@ -42,7 +42,7 @@
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::StmtList>>          stmt_list
-%nterm                                           start
+%nterm                                           program
 
 %nonassoc             ASSIGN
 %left                 OR

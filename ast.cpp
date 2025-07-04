@@ -1,6 +1,6 @@
 #include "ast.hpp"
 #include "ast_visitor.hpp"
-#include <format>  
+ 
 
 namespace ast {    
     
@@ -9,7 +9,7 @@ namespace ast {
     }
 
     std::string FloatLitExpr::str() const {
-        return std::format("lit({})", literal);
+        return "lit(" + literal + ")";
     }
 
     std::string StringLitExpr::str() const {
