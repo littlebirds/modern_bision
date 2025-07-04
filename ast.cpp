@@ -5,11 +5,11 @@
 namespace ast {    
     
     std::string IntLitExpr::str() const {
-        return "iexp(" + literal + ")"; 
+        return "lit(" + literal + ")"; 
     }
 
     std::string FloatLitExpr::str() const {
-        return "fexp(" + literal + ")";
+        return std::format("lit({})", literal);
     }
 
     std::string StringLitExpr::str() const {
