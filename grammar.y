@@ -7,10 +7,8 @@
  
 %require "3.7.4"
 %language "C++"
-// conflicts with CMake findBison
-// %defines "Parser.hpp"
-// %output "Parser.cpp"
- 
+%header
+%locations
 %define api.parser.class {Parser}
 %define api.namespace {monkey}
 %define api.value.type variant
@@ -29,7 +27,7 @@
 %code
 {
     #include "Scanner.hpp"
-    #define yylex(x) scanner->lex(x)
+    #define yylex(x, loc) scanner->lex(x, loc)
 }
  
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
@@ -49,7 +47,7 @@
 %left                 OR
 %left                 AND
 %nonassoc             NOT
-%nonassoc             GT LT GE LE EQ NOT_EQ
+%nonassoc             GT LT GE LE EQ NOT_EQ 
 %left                 PLUS MINUS
 %left                 MULTIPLY DIVIDE MODULO
 %precedence           UMINUS
@@ -66,17 +64,19 @@ program : %empty                            { $$ = std::make_unique<ast::Program
         ;
  
 stmt    : EOL                               { ; }
-        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); }
+        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); @$ = @1; }
         | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
         | error EOL                         { yyerrok; }
         ;
  
-expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitExpr>($1); }
-        | FLOAT                             { $$ = std::make_unique<ast::FloatLitExpr>($1); }
-        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
-        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
-        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
-        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
+expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitExpr>($1); @$ = @1; }
+        | FLOAT                             { $$ = std::make_unique<ast::FloatLitExpr>($1); @$ = @1; }
+        | expr MINUS expr                   
+        | expr PLUS expr                     
+        | expr MULTIPLY expr                 
+        | expr DIVIDE expr                  { 
+                                                $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), int($2)); 
+                                            }
 //        | iexp MODULO iexp                { $$ = $1 % $3; }
 //        | MINUS iexp %prec UMINUS         { $$ = -$2; }
 //        | iexp FACTORIAL                  { $$ = factorial($1); }
@@ -85,6 +85,6 @@ expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitE
  
 %%
  
-void monkey::Parser::error(const std::string& msg) {
-    std::cerr << msg << '\n';
+void monkey::Parser::error(const location_type& loc, const std::string& msg) {
+    std::cerr << "[" << loc << "]:" << msg << '\n';
 }

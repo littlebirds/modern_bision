@@ -1,9 +1,10 @@
 %{
 #include "Parser.hpp"
 #include "Scanner.hpp"
+#include "location.hh"
 
 #undef YY_DECL
-#define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval)
+#define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval, monkey::location* loc)
 %}
  
 %option c++ interactive noyywrap noyylineno nodefault

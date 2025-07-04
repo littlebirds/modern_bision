@@ -4,10 +4,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "location.hh"
 
 namespace ast {
 
 struct Node {
+    monkey::location loc;
     virtual ~Node() = default;
     virtual std::string str() const = 0;
 };
