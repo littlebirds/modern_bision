@@ -12,48 +12,43 @@ struct Node {
     virtual std::string str() const = 0;
 };
 
-struct Expr : public Node { 
+struct Expr : public Node {
+
 };
 
 struct Stmt : public Node { 
 };
 
-struct Program : public Node {
+struct StmtList : public Node {
     std::vector<std::unique_ptr<Stmt>> statements;
-    Program() = default;
-    ~Program() = default;
 
-    void appendStmt(std::unique_ptr<Stmt> stmt) {
+    void append(std::unique_ptr<Stmt> stmt) {
         statements.push_back(std::move(stmt));
     }
+    std::string str() const override;
+};
+
+struct LiteralExpr : public Expr {
+    std::string literal;
+
+    LiteralExpr(std::string value) : literal(value) {}
+};
+
+struct IntLitExpr : public LiteralExpr { 
+    IntLitExpr(std::string value) : LiteralExpr(value) {} 
 
     std::string str() const override;
 };
 
-struct IntLitExpr : public Expr {
-    long long value;
-
-    IntLitExpr(long long value) : value(value) {}
-    ~IntLitExpr() = default;
-
-    std::string str() const override;
-};
-
-struct FloatLitExpr : public Expr {
-    double value;
-    
-    FloatLitExpr(double value) : value(value) {}
-    ~FloatLitExpr() = default;
+struct FloatLitExpr : public LiteralExpr {    
+    FloatLitExpr(std::string value) : LiteralExpr(value) {}
 
     std::string str() const override;
 }; 
 
-struct StringLitExpr : public Expr {
-    std::string value;
-    
-    StringLitExpr(std::string value) : value(std::move(value)) {}
-    ~StringLitExpr() = default;
-    
+struct StringLitExpr : public LiteralExpr {    
+    StringLitExpr(std::string value) : LiteralExpr(value) {}
+
     std::string str() const override;
 };
 

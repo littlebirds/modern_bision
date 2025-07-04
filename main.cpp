@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     const char* mode = argv[1];
     if (strncmp(mode, "-i", 2) == 0) {
         banner();
-        ast::Program app;
+        ast::StmtList stmtList;
         while (true) {            
             std::unique_ptr<ast::Node> pAST;                
             monkey::Scanner scanner{std::cin, std::cerr};            
@@ -38,9 +38,9 @@ int main(int argc, char** argv) {
             parser.parse();
             if (pAST) {
                 std::cout << pAST->str() << std::endl;
-                if (auto pprog = dynamic_cast<ast::Program*>(pAST.get())) {
+                if (auto pprog = static_cast<ast::StmtList*>(pAST.get())) {
                     for (auto& stmt: pprog->statements) {
-                        app.appendStmt(std::move(stmt));  
+                        stmtList.append(std::move(stmt));  
                     }
                 } else {
                     std::cerr << "Error: Expected a Program node." << std::endl;
