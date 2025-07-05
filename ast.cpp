@@ -5,12 +5,20 @@
 
 namespace ast {    
     
-    std::string IntLitExpr::str() const {
-        return "lit_i(" + literal + ")"; 
+    std::string Node::str() const {
+
+        std::ostringstream ss;
+        ss << "@" << loc << ">>";
+        return ss.str();
     }
 
-    std::string FloatLitExpr::str() const {
-        return "lit_f(" + literal + ")";
+    std::string IntLitExpr::str() const {
+        std::ostringstream ss;
+        return "(" + literal + ")" ; 
+    }
+
+    std::string FloatLitExpr::str() const { 
+        return "(" + literal + ")";
     }
 
     std::string StringLitExpr::str() const {
@@ -18,9 +26,9 @@ namespace ast {
     }   
 
     std::string BinOpExpr::str() const {
-        std::ostringstream ss;
-        ss << this->loc << "(" << left->str() << " " + std::string(op) << " " << right->str() << ")"; 
-        return ss.str();
+        auto prefix = Node::str();
+        prefix += "(" + left->str() + " " + std::string(op) + " " + right->str() + ")"; 
+        return prefix;
     }
 
     std::string StmtList::str() const {

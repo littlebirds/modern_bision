@@ -5,6 +5,9 @@
 
 #undef YY_DECL
 #define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval, monkey::location* loc)
+
+#define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc; 
+#define FIX_MY_LINES        myloc.lines(YYLeng()); *loc = myloc
 %}
  
 %option c++ interactive noyywrap noyylineno nodefault
@@ -23,18 +26,18 @@ identifier      ([:alpha:][[:alnum:]_]*)
  
 {integer}       { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_INT; }
 {float}         { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_FLOAT; }
-"let"           return Parser::token::LET;
-"fn"            return Parser::token::FUNCTION;
-"for"           return Parser::token::FOR;
-"return"        return Parser::token::RETURN;
-"if"            return Parser::token::IF;
-"else"          return Parser::token::ELSE;
-"elif"          return Parser::token::ELIF;
-"true"          return Parser::token::TRUE;
-"false"         return Parser::token::FALSE;
+"let"           { return Parser::token::LET; }
+"fn"            { return Parser::token::FUNCTION; }
+"for"           { return Parser::token::FOR; }
+"return"        { return Parser::token::RETURN; }
+"if"            { return Parser::token::IF; }
+"else"          { return Parser::token::ELSE; }
+"elif"          { return Parser::token::ELIF; }
+"true"          { return Parser::token::TRUE; }
+"false"         { return Parser::token::FALSE; }
 "and"           { yylval->emplace<const char*>("and"); return Parser::token::AND; }
 "or"            { yylval->emplace<const char*>("or"); return Parser::token::OR; }
-"not"           return Parser::token::NOT; 
+"not"           { return Parser::token::NOT; }
 "<="            { yylval->emplace<const char*>("<=" ); return Parser::token::LE; }
 ">="            { yylval->emplace<const char*>(">="); return Parser::token::GE; }
 "=="            { yylval->emplace<const char*>("=="); return Parser::token::EQ; }
@@ -46,21 +49,21 @@ identifier      ([:alpha:][[:alnum:]_]*)
 "*"             { yylval->emplace<const char*>("*"); return Parser::token::MULTIPLY; }
 "/"             { yylval->emplace<const char*>("/"); return Parser::token::DIVIDE; }
 "%"             { yylval->emplace<const char*>("%"); return Parser::token::MODULO; }
-"!"             return Parser::token::FACTORIAL;
-"^"             return Parser::token::EXPONENT;
-"("             return Parser::token::LPAREN;
-")"             return Parser::token::RPAREN;
-"["             return Parser::token::LBRACKET;
-"]"             return Parser::token::RBRACKET;
-"{"             return Parser::token::LBRACE;
-"}"             return Parser::token::RBRACE;
-":"             return Parser::token::COLON;
-";"             return Parser::token::SEMICOLON;
-","             return Parser::token::COMMA;
-"="             return Parser::token::ASSIGN;
-"."             return Parser::token::DOT;
-\n              return Parser::token::EOL;
-\/\/[^\n]*     { /* skip single line comment */ return Parser::token::EOL; }
+"!"             { return Parser::token::FACTORIAL; }
+"^"             { return Parser::token::EXPONENT; }
+"("             { return Parser::token::LPAREN; }
+")"             { return Parser::token::RPAREN; } 
+"["             { return Parser::token::LBRACKET; }
+"]"             { return Parser::token::RBRACKET; }
+"{"             { return Parser::token::LBRACE; }
+"}"             { return Parser::token::RBRACE; }
+":"             { return Parser::token::COLON; }
+";"             { return Parser::token::SEMICOLON; }
+","             { return Parser::token::COMMA; }
+"="             { return Parser::token::ASSIGN; }
+"."             { return Parser::token::DOT; }
+\n+             { FIX_MY_LINES; return Parser::token::EOL; }
+\/\/[^\n]*      { /* skip single line comment */ ; }
 {identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */

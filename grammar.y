@@ -28,6 +28,10 @@
 {
     #include "Scanner.hpp"
     #define yylex(x, loc) scanner->lex(x, loc)
+
+    void print_loc(const char * prefix, const monkey::location& loc) {
+        std::cout << prefix << " " <<loc << std::endl;
+    }
 }
  
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
@@ -65,17 +69,17 @@ stmt_list : %empty                            { $$ = std::make_unique<ast::StmtL
         ;
  
 stmt    : EOL                               { ; }
-        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); @$ = @1; }
-        | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
+        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); @$ = @1; }
+        | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>(@$, $2, std::move($4)); } 
         | error EOL                         { yyerrok; }
         ; 
 
 binop   : AND | OR | GT | LT | GE | LE | EQ | NOT_EQ | PLUS | MINUS | DIVIDE | MULTIPLY | MODULO | EXPONENT
                                             { $$ = $1; }
         ;
-expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>($1); @$ = @1; }
-        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>($1); @$ = @1; }
-        | expr binop expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), $2); }    
+expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>(@$, $1);}
+        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>(@$, $1); }
+        | expr binop expr                   { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), $2); }    
 //        | iexp MODULO iexp                { $$ = $1 % $3; }
 //        | MINUS iexp %prec UMINUS         { $$ = -$2; }
 //        | iexp FACTORIAL                  { $$ = factorial($1); }
