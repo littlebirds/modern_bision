@@ -7,10 +7,8 @@
  
 %require "3.7.4"
 %language "C++"
-// conflicts with CMake findBison
-// %defines "Parser.hpp"
-// %output "Parser.cpp"
- 
+%header
+%locations
 %define api.parser.class {Parser}
 %define api.namespace {monkey}
 %define api.value.type variant
@@ -29,16 +27,21 @@
 %code
 {
     #include "Scanner.hpp"
-    #define yylex(x) scanner->lex(x)
+    #define yylex(x, loc) scanner->lex(x, loc)
+
+    void print_loc(const char * prefix, const monkey::location& loc) {
+        std::cout << prefix << " " <<loc << std::endl;
+    }
 }
  
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR
-%token <double>                 FLOAT
+%token <const char*>            AND OR GT LT GE LE EQ NOT_EQ PLUS MINUS DIVIDE MULTIPLY MODULO EXPONENT
 %token <std::string>            Ident
  
+%nterm <const char*>                             binop
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::StmtList>>          stmt_list
@@ -48,7 +51,7 @@
 %left                 OR
 %left                 AND
 %nonassoc             NOT
-%nonassoc             GT LT GE LE EQ NOT_EQ
+%nonassoc             GT LT GE LE EQ NOT_EQ 
 %left                 PLUS MINUS
 %left                 MULTIPLY DIVIDE MODULO
 %precedence           UMINUS
@@ -66,17 +69,17 @@ stmt_list : %empty                            { $$ = std::make_unique<ast::StmtL
         ;
  
 stmt    : EOL                               { ; }
-        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(std::move($1)); }
-        | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
+        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); @$ = @1; }
+        | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>(@$, $2, std::move($4)); } 
         | error EOL                         { yyerrok; }
         ; 
- 
-expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>($1); }
-        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>($1); }
-        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
-        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
-        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
-        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
+
+binop   : AND | OR | GT | LT | GE | LE | EQ | NOT_EQ | PLUS | MINUS | DIVIDE | MULTIPLY | MODULO | EXPONENT
+                                            { $$ = $1; }
+        ;
+expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>(@$, $1);}
+        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>(@$, $1); }
+        | expr binop expr                   { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), $2); }    
 //        | iexp MODULO iexp                { $$ = $1 % $3; }
 //        | MINUS iexp %prec UMINUS         { $$ = -$2; }
 //        | iexp FACTORIAL                  { $$ = factorial($1); }
@@ -85,6 +88,6 @@ expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitE
  
 %%
  
-void monkey::Parser::error(const std::string& msg) {
-    std::cerr << msg << '\n';
+void monkey::Parser::error(const location_type& loc, const std::string& msg) {
+    std::cerr << "[" << loc << "]:" << msg << '\n';
 }

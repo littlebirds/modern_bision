@@ -1,4 +1,9 @@
 # Monkey Programming Language Compiler in C++ /Bison/ Flex
+
+## Goal
+This repo is for setting up a starting project for compiler development. It leverages Flex/Bison to generate lexer/parser in C++ for 
+the monkey programming language, enabling agile testing out new feature ideas.  
+
 ## Reference
 [Monkey Programming Language](https://monkeylang.org/)
 
@@ -7,8 +12,9 @@
 [Bison 3.8 Manual](https://www.gnu.org/software/bison/manual/bison.html)
 
 ## Build & Test
+sudo apt install flex bison cmake
 ```bash
-cmake -S. -Bbulid
+cmake -DCMAKE_BUILD_TYPE=Debug -S. -Bbuild
 cmake --build build
 build/parser 
 ```

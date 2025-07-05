@@ -1,15 +1,24 @@
 #include "ast.hpp"
 #include "ast_visitor.hpp"
+#include <sstream>
  
 
 namespace ast {    
     
-    std::string IntLitExpr::str() const {
-        return "lit(" + literal + ")"; 
+    std::string Node::str() const {
+
+        std::ostringstream ss;
+        ss << "@" << loc << ">>";
+        return ss.str();
     }
 
-    std::string FloatLitExpr::str() const {
-        return "lit(" + literal + ")";
+    std::string IntLitExpr::str() const {
+        std::ostringstream ss;
+        return "(" + literal + ")" ; 
+    }
+
+    std::string FloatLitExpr::str() const { 
+        return "(" + literal + ")";
     }
 
     std::string StringLitExpr::str() const {
@@ -17,7 +26,9 @@ namespace ast {
     }   
 
     std::string BinOpExpr::str() const {
-        return "(" + left->str() + " " + std::string(op) + " " + right->str() + ")";
+        auto prefix = Node::str();
+        prefix += "(" + left->str() + " " + std::string(op) + " " + right->str() + ")"; 
+        return prefix;
     }
 
     std::string StmtList::str() const {
