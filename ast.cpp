@@ -1,15 +1,16 @@
 #include "ast.hpp"
 #include "ast_visitor.hpp"
+#include <sstream>
  
 
 namespace ast {    
     
     std::string IntLitExpr::str() const {
-        return "lit(" + literal + ")"; 
+        return "lit_i(" + literal + ")"; 
     }
 
     std::string FloatLitExpr::str() const {
-        return "lit(" + literal + ")";
+        return "lit_f(" + literal + ")";
     }
 
     std::string StringLitExpr::str() const {
@@ -17,7 +18,9 @@ namespace ast {
     }   
 
     std::string BinOpExpr::str() const {
-        return "(" + left->str() + " " + std::string(op) + " " + right->str() + ")";
+        std::ostringstream ss;
+        ss << this->loc << "(" << left->str() << " " + std::string(op) << " " << right->str() << ")"; 
+        return ss.str();
     }
 
     std::string StmtList::str() const {

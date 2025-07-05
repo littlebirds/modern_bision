@@ -34,9 +34,10 @@
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR
-%token <double>                 FLOAT
+%token <const char*>            AND OR GT LT GE LE EQ NOT_EQ PLUS MINUS DIVIDE MULTIPLY MODULO EXPONENT
 %token <std::string>            Ident
  
+%nterm <const char*>                             binop
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::StmtList>>          stmt_list
@@ -68,24 +69,13 @@ stmt    : EOL                               { ; }
         | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>($2, std::move($4)); } 
         | error EOL                         { yyerrok; }
         ; 
- 
-<<<<<<< HEAD
-expr    : INTEGER                           { $$ = std::make_unique<ast::IntLitExpr>($1); @$ = @1; }
-        | FLOAT                             { $$ = std::make_unique<ast::FloatLitExpr>($1); @$ = @1; }
-        | expr MINUS expr                   
-        | expr PLUS expr                     
-        | expr MULTIPLY expr                 
-        | expr DIVIDE expr                  { 
-                                                $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), int($2)); 
-                                            }
-=======
-expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>($1); }
-        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>($1); }
-        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "-"); }
-        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "+"); }
-        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "*"); }
-        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), "/"); }
->>>>>>> master
+
+binop   : AND | OR | GT | LT | GE | LE | EQ | NOT_EQ | PLUS | MINUS | DIVIDE | MULTIPLY | MODULO | EXPONENT
+                                            { $$ = $1; }
+        ;
+expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>($1); @$ = @1; }
+        | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>($1); @$ = @1; }
+        | expr binop expr                   { $$ = std::make_unique<ast::BinOpExpr>(std::move($1), std::move($3), $2); }    
 //        | iexp MODULO iexp                { $$ = $1 % $3; }
 //        | MINUS iexp %prec UMINUS         { $$ = -$2; }
 //        | iexp FACTORIAL                  { $$ = factorial($1); }

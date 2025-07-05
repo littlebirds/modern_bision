@@ -32,20 +32,20 @@ identifier      ([:alpha:][[:alnum:]_]*)
 "elif"          return Parser::token::ELIF;
 "true"          return Parser::token::TRUE;
 "false"         return Parser::token::FALSE;
-"and"           return Parser::token::AND;
-"or"            return Parser::token::OR;
-"not"           return Parser::token::NOT;
-"<="            return Parser::token::LE;
-">="            return Parser::token::GE;
-"=="            return Parser::token::EQ;
-"!="            return Parser::token::NOT_EQ;
-"<"             return Parser::token::LT;
-">"             return Parser::token::GT;
-"+"             return Parser::token::PLUS;
-"-"             return Parser::token::MINUS;
-"*"             return Parser::token::MULTIPLY;
-"/"             return Parser::token::DIVIDE;
-"%"             return Parser::token::MODULO;
+"and"           { yylval->emplace<const char*>("and"); return Parser::token::AND; }
+"or"            { yylval->emplace<const char*>("or"); return Parser::token::OR; }
+"not"           return Parser::token::NOT; 
+"<="            { yylval->emplace<const char*>("<=" ); return Parser::token::LE; }
+">="            { yylval->emplace<const char*>(">="); return Parser::token::GE; }
+"=="            { yylval->emplace<const char*>("=="); return Parser::token::EQ; }
+"!="            { yylval->emplace<const char*>("!="); return Parser::token::NOT_EQ;}
+"<"             { yylval->emplace<const char*>("<"); return Parser::token::LT; }
+">"             { yylval->emplace<const char*>(">"); return Parser::token::GT; }
+"+"             { yylval->emplace<const char*>("+"); return Parser::token::PLUS; }
+"-"             { yylval->emplace<const char*>("-"); return Parser::token::MINUS; }
+"*"             { yylval->emplace<const char*>("*"); return Parser::token::MULTIPLY; }
+"/"             { yylval->emplace<const char*>("/"); return Parser::token::DIVIDE; }
+"%"             { yylval->emplace<const char*>("%"); return Parser::token::MODULO; }
 "!"             return Parser::token::FACTORIAL;
 "^"             return Parser::token::EXPONENT;
 "("             return Parser::token::LPAREN;

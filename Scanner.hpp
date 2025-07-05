@@ -16,6 +16,7 @@ public:
     Scanner(std::istream* arg_yyin = nullptr, std::ostream* arg_yyout = nullptr)
         : yyFlexLexer(arg_yyin, arg_yyout) {}
     int lex(Parser::semantic_type *yylval, location* loc); // note: this is the prototype we need
+    monkey::location *yylloc = nullptr;
 };
  
 } // namespace monkey

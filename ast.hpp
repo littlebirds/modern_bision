@@ -33,7 +33,7 @@ struct StmtList : public Node {
 struct LiteralExpr : public Expr {
     std::string literal;
 
-    LiteralExpr(std::string value) : literal(value) {}
+    LiteralExpr(std::string value) : literal(std::move(value)) {}
 };
 
 struct IntLitExpr : public LiteralExpr { 
@@ -57,7 +57,7 @@ struct StringLitExpr : public LiteralExpr {
 struct BinOpExpr : public Expr {
     std::unique_ptr<Expr> left;
     std::unique_ptr<Expr> right;
-    const char* const op;
+    const char* op;
 
     BinOpExpr(std::unique_ptr<Expr> left, std::unique_ptr<Expr> right, const char* op)
         : left(std::move(left)), right(std::move(right)), op(op) {}
