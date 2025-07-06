@@ -23,6 +23,10 @@ struct Expr : public Node {
 
 struct Stmt : public Node { 
     using Node::Node;
+    int nested_lvl = 0;
+
+    virtual void ident(int adjustment) { nested_lvl += adjustment; }
+    std::string str() const override;
 };
 
 struct StmtList : public Node {
@@ -31,8 +35,21 @@ struct StmtList : public Node {
     StmtList() : Node(monkey::location()) {};
 
     void append(std::unique_ptr<Stmt> stmt) {
-        statements.push_back(std::move(stmt));
+        statements.push_back(std::move(stmt));    
     }
+
+    void ident(int adjustment) { for (auto& stmt : statements) { stmt->ident(adjustment); } }
+
+    std::string str() const override;
+};
+
+struct BlockStmt : public Stmt {
+    std::unique_ptr<StmtList> stmtList; 
+
+    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) { ident(adjustment); }
+
+    void ident(int adjustment) override { Stmt::ident(adjustment); stmtList->ident(adjustment); }
+
     std::string str() const override;
 };
 
@@ -58,6 +75,15 @@ struct StringLitExpr : public LiteralExpr {
     using LiteralExpr::LiteralExpr;
 
     std::string str() const override;
+};
+
+struct UnaryExpr: public Expr {
+    std::unique_ptr<Expr> operand;
+    const char* prefix;
+
+    UnaryExpr(const monkey::location& loc, std::unique_ptr<Expr> expr, const char* op) : Expr(loc), operand(std::move(expr)), prefix(op) {}
+
+    std::string str() const;
 };
 
 struct BinOpExpr : public Expr {

@@ -8,6 +8,8 @@
 
 #define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc; 
 #define FIX_MY_LINES        myloc.lines(YYLeng()); *loc = myloc
+
+
 %}
  
 %option c++ interactive noyywrap noyylineno nodefault
@@ -35,28 +37,28 @@ identifier      ([:alpha:][[:alnum:]_]*)
 "elif"          { return Parser::token::ELIF; }
 "true"          { return Parser::token::TRUE; }
 "false"         { return Parser::token::FALSE; }
-"and"           { yylval->emplace<const char*>("and"); return Parser::token::AND; }
-"or"            { yylval->emplace<const char*>("or"); return Parser::token::OR; }
+"and"           { return Parser::token::AND; }
+"or"            { return Parser::token::OR; }
 "not"           { return Parser::token::NOT; }
-"<="            { yylval->emplace<const char*>("<=" ); return Parser::token::LE; }
-">="            { yylval->emplace<const char*>(">="); return Parser::token::GE; }
-"=="            { yylval->emplace<const char*>("=="); return Parser::token::EQ; }
-"!="            { yylval->emplace<const char*>("!="); return Parser::token::NOT_EQ;}
-"<"             { yylval->emplace<const char*>("<"); return Parser::token::LT; }
-">"             { yylval->emplace<const char*>(">"); return Parser::token::GT; }
-"+"             { yylval->emplace<const char*>("+"); return Parser::token::PLUS; }
-"-"             { yylval->emplace<const char*>("-"); return Parser::token::MINUS; }
-"*"             { yylval->emplace<const char*>("*"); return Parser::token::MULTIPLY; }
-"/"             { yylval->emplace<const char*>("/"); return Parser::token::DIVIDE; }
-"%"             { yylval->emplace<const char*>("%"); return Parser::token::MODULO; }
+"<="            { return Parser::token::LE; }
+">="            { return Parser::token::GE; }
+"=="            { return Parser::token::EQ; }
+"!="            { return Parser::token::NOT_EQ;}
+"<"             { return Parser::token::LT; }
+">"             { return Parser::token::GT; }
+"+"             { return Parser::token::PLUS; }
+"-"             { return Parser::token::MINUS; }
+"*"             { return Parser::token::MULTIPLY; }
+"/"             { return Parser::token::DIVIDE; }
+"%"             { return Parser::token::MODULO; }
 "!"             { return Parser::token::FACTORIAL; }
 "^"             { return Parser::token::EXPONENT; }
 "("             { return Parser::token::LPAREN; }
 ")"             { return Parser::token::RPAREN; } 
 "["             { return Parser::token::LBRACKET; }
 "]"             { return Parser::token::RBRACKET; }
-"{"             { return Parser::token::LBRACE; }
-"}"             { return Parser::token::RBRACE; }
+"{"             { ++this->indent_lvl; yylval->emplace<int>(indent_lvl); return Parser::token::LBRACE; }
+"}"             { --this->indent_lvl; return Parser::token::RBRACE; }
 ":"             { return Parser::token::COLON; }
 ";"             { return Parser::token::SEMICOLON; }
 ","             { return Parser::token::COMMA; }

@@ -25,14 +25,25 @@ namespace ast {
         return "\"" + literal + "\"";
     }   
 
+    std::string UnaryExpr::str() const { 
+        return std::string(prefix) + operand->str();
+    }
+
     std::string BinOpExpr::str() const {
         auto prefix = Node::str();
         prefix += "(" + left->str() + " " + std::string(op) + " " + right->str() + ")"; 
         return prefix;
     }
 
+    std::string Stmt::str() const { return std::string(nested_lvl, '\t'); }
+
+    std::string BlockStmt::str() const {
+        std::string identdation = Stmt::str();
+        return identdation + "{\n" + stmtList->str() + identdation + "\n}";
+    }
+
     std::string StmtList::str() const {
-        std::string result{"Program:\n"};
+        std::string result;
         for (const auto& stmt : statements) {
             result += stmt->str() + "\n";
         }
@@ -40,10 +51,12 @@ namespace ast {
     }
 
     std::string ExprStmt::str() const {
-        return expression->str() + ";";
+        std::string identation = Stmt::str(); 
+        return identation + expression->str() + ";";
     }
 
     std::string LetStmt::str() const {
-        return "let " + ident + " = " + value->str() + ";";
+        std::string identation = Stmt::str();
+        return identation + "let " + ident + " = " + value->str() + ";";
     }
 }

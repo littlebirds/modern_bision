@@ -34,14 +34,13 @@
     }
 }
  
-%token                          EOL LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON SEMICOLON COMMA DOT
+%token <int>                    LBRACE 
+%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
-%token <std::string>            LIT_INT LIT_FLOAT LIT_STR
-%token <const char*>            AND OR GT LT GE LE EQ NOT_EQ PLUS MINUS DIVIDE MULTIPLY MODULO EXPONENT
+%token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
 %token <std::string>            Ident
- 
-%nterm <const char*>                             binop
+
 %nterm <std::unique_ptr<ast::Expr>>              expr
 %nterm <std::unique_ptr<ast::Stmt>>              stmt
 %nterm <std::unique_ptr<ast::StmtList>>          stmt_list
@@ -69,19 +68,30 @@ stmt_list : %empty                            { $$ = std::make_unique<ast::StmtL
         ;
  
 stmt    : EOL                               { ; }
-        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); @$ = @1; }
+        | expr SEMICOLON                    { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); }
         | LET Ident ASSIGN expr SEMICOLON   { $$ = std::make_unique<ast::LetStmt>(@$, $2, std::move($4)); } 
+        | LBRACE stmt_list RBRACE           { $$ = std::make_unique<ast::BlockStmt>(@$, std::move($2), $1); }
         | error EOL                         { yyerrok; }
         ; 
 
-binop   : AND | OR | GT | LT | GE | LE | EQ | NOT_EQ | PLUS | MINUS | DIVIDE | MULTIPLY | MODULO | EXPONENT
-                                            { $$ = $1; }
         ;
 expr    : LIT_INT                           { $$ = std::make_unique<ast::IntLitExpr>(@$, $1);}
         | LIT_FLOAT                         { $$ = std::make_unique<ast::FloatLitExpr>(@$, $1); }
-        | expr binop expr                   { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), $2); }    
-//        | iexp MODULO iexp                { $$ = $1 % $3; }
-//        | MINUS iexp %prec UMINUS         { $$ = -$2; }
+        | MINUS expr %prec UMINUS           { $$ = std::make_unique<ast::UnaryExpr>(@$, std::move($2), "-"); }
+        | expr AND expr                     { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "and"); }
+        | expr OR expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "or"); }   
+        | expr GT expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), ">"); }   
+        | expr LT expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "<"); }   
+        | expr GE expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), ">="); }   
+        | expr LE expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "<="); }   
+        | expr EQ expr                      { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "=="); }   
+        | expr NOT_EQ expr                  { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "!="); }   
+        | expr PLUS expr                    { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3),"+"); }   
+        | expr MINUS expr                   { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "-"); } 
+        | expr DIVIDE expr                  { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "/"); }   
+        | expr MULTIPLY expr                { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "*"); } 
+        | expr MODULO expr                  { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "%"); } 
+        | expr EXPONENT expr                { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "^"); } 
 //        | iexp FACTORIAL                  { $$ = factorial($1); }
         | LPAREN expr RPAREN                { $$ = std::move($2); }
         ;
