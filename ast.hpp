@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 #include "location.hh"
 
 namespace ast {
@@ -39,16 +40,6 @@ struct StmtList : public Node {
     }
 
     void ident(int adjustment) { for (auto& stmt : statements) { stmt->ident(adjustment); } }
-
-    std::string str() const override;
-};
-
-struct BlockStmt : public Stmt {
-    std::unique_ptr<StmtList> stmtList; 
-
-    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) { ident(adjustment); }
-
-    void ident(int adjustment) override { Stmt::ident(adjustment); stmtList->ident(adjustment); }
 
     std::string str() const override;
 };
@@ -110,6 +101,37 @@ struct LetStmt : public Stmt {
     std::unique_ptr<Expr> value;
 
     LetStmt(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Stmt(loc), ident(std::move(ident)), value(std::move(value)) {}
+    std::string str() const override;
+};
+
+struct BlockStmt : public Stmt {
+    std::unique_ptr<StmtList> stmtList; 
+
+    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) { ident(adjustment); }
+
+    void ident(int adjustment) override { Stmt::ident(adjustment); stmtList->ident(adjustment); }
+
+    std::string str() const override;
+};
+
+
+struct ElifList {
+    std::vector<std::tuple<std::unique_ptr<Expr>, std::unique_ptr<BlockStmt>>> branches; 
+
+    void append(std::unique_ptr<Expr> cond, std::unique_ptr<BlockStmt> branch) {
+        branches.emplace_back(std::move(cond), std::move(branch));
+    }
+};
+
+struct IfStmt : public Stmt {
+    std::unique_ptr<Expr> cond;
+    std::unique_ptr<BlockStmt> truthy_branch;
+    std::unique_ptr<ElifList> elseIfs;
+    std::optional<std::unique_ptr<BlockStmt>> optElse;
+
+    IfStmt(monkey::location loc, std::unique_ptr<BlockStmt> truthy_branch, std::unique_ptr<ElifList> elseIfs, std::optional<std::unique_ptr<BlockStmt>> optElse)
+    : Stmt(loc), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)), optElse(std::move(optElse)) {}
+    
     std::string str() const override;
 };
 
