@@ -41,14 +41,14 @@
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
 %token <std::string>            Ident
 
-%nterm <std::unique_ptr<ast::Expr>>                 expr
-%nterm <std::unique_ptr<ast::Stmt>>                 stmt
-%nterm <std::unique_ptr<ast::StmtList>>             stmt_list
-%nterm <std::unique_ptr<ast::BlockStmt>>            block_stmt
-%nterm <std::unique_ptr<ast::ElifList>>             elif_list
-%nterm <std::optional<std::unique_ptr<BlockStmt>>>  opt_else
-%nterm <std::unique_ptr<ast::IfStmt>                if_stmt
-%nterm                                              program
+%nterm <std::unique_ptr<ast::Expr>>                             expr
+%nterm <std::unique_ptr<ast::Stmt>>                             stmt
+%nterm <std::unique_ptr<ast::StmtList>>                         stmt_list
+%nterm <std::unique_ptr<ast::BlockStmt>>                        block_stmt
+%nterm <std::unique_ptr<ast::ElifList>>                         elif_list
+%nterm <std::optional<std::unique_ptr<ast::BlockStmt >>>        opt_else
+%nterm <std::unique_ptr<ast::IfStmt>>                           if_stmt
+%nterm                                                          program
 
 %nonassoc             ASSIGN
 %left                 OR
@@ -73,11 +73,11 @@ stmt_list : %empty                                  { $$ = std::make_unique<ast:
 
 block_stmt :  LBRACE stmt_list RBRACE               { $$ = std::make_unique<ast::BlockStmt>(@$, std::move($2), $1); }
         ;       
-if_stmt: IF expr block_stmt elif_list opt_else      { $$ = std::make_unique<ast::BlockStmt>(@$, std::move($2), std::move($3), std::move($4), std::move($5)); }
+if_stmt: IF expr block_stmt elif_list opt_else      { $$ = std::make_unique<ast::IfStmt>(@$, std::move($2), std::move($3), std::move($4), std::move($5)); }
         ;
 
 elif_list: %empty                                   { $$ = std::make_unique<ast::ElifList>(); }
-        | elif_list ELIF expr block_stmt            { $1.append(std::move($3), std::move($4)); $$ = std::move($1); }
+        | elif_list ELIF expr block_stmt            { $1->append(std::move($3), std::move($4)); $$ = std::move($1); }
         ;
 
 opt_else: %empty                                    { $$ = std::nullopt; }

@@ -29,17 +29,14 @@ namespace ast {
         return std::string(prefix) + operand->str();
     }
 
-    std::string BinOpExpr::str() const {
-        auto prefix = Node::str();
-        prefix += "(" + left->str() + " " + std::string(op) + " " + right->str() + ")"; 
-        return prefix;
+    std::string BinOpExpr::str() const { 
+        return std::string("(") + left->str() + " " + std::string(op) + " " + right->str() + ")";  
     }
-
-    std::string Stmt::str() const { return std::string(nested_lvl, '\t'); }
+ 
+    std::string Stmt::indentate(const char* content) const { return (std::string(nested_lvl, '\t') + content); }
 
     std::string BlockStmt::str() const {
-        std::string identdation = Stmt::str();
-        return identdation + "{\n" + stmtList->str() + identdation + "\n}";
+        return indentate("{\n") + stmtList->str() + indentate("}\n");
     }
 
     std::string StmtList::str() const {
@@ -51,12 +48,37 @@ namespace ast {
     }
 
     std::string ExprStmt::str() const {
-        std::string identation = Stmt::str(); 
-        return identation + expression->str() + ";";
+        return indentate("") + expression->str() + ";";
     }
 
     std::string LetStmt::str() const {
-        std::string identation = Stmt::str();
-        return identation + "let " + ident + " = " + value->str() + ";";
+        return indentate("let ") + ident + " = " + value->str() + ";";
+    } 
+
+    void IfStmt::setIndentationLvl(int adjustment) {
+        truthy_branch->setIndentationLvl(adjustment);
+        if (elseIfs) {
+            for (const auto& [_, elseBlock] : elseIfs->branches) {
+                elseBlock->setIndentationLvl(adjustment);
+            }
+        }
+        if (optElse) {
+            optElse.value()->setIndentationLvl(adjustment);
+        }
+    }
+
+    std::string IfStmt::str() const { 
+        std::string result = indentate("if")  + cond->str() + "\n";
+        result.append(truthy_branch->str());
+        if (elseIfs) {
+            for (const auto& [elseCond, elseBlock] : elseIfs->branches) {
+                result.append(indentate("elif") + elseCond->str() + "\n");
+                result.append(elseBlock->str());
+            }
+        }
+        if (optElse) {
+            result.append(optElse.value()->str());
+        }
+        return result; 
     }
 }
