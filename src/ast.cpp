@@ -1,6 +1,7 @@
 #include "ast.hpp"
 #include "ast_visitor.hpp"
 #include <sstream>
+#include <algorithm>
  
 
 namespace ast {    
@@ -30,6 +31,24 @@ namespace ast {
 
     std::string BinOpExpr::str() const { 
         return std::string("(") + left->str() + " " + std::string(op) + " " + right->str() + ")";  
+    }
+
+    std::string ExprSeq::str() const {
+        std::string result {};
+        for (int i = 0; i < exprs.size(); ++i) { 
+            result.append(exprs[i]->str());
+            result.push_back(',');
+            result.push_back(' ');
+        }
+        if (exprs.size() > 0) {
+            result.pop_back();
+            result.pop_back();
+        }
+        return result;
+    }
+
+    std::string ArrayExpr::str() const {
+        return std::string("[") + expr_seq->str() + "]";
     }
 
     std::string LetExpr::str() const {

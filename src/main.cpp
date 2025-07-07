@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 std::cout << pAST->str() << std::endl;
                 if (auto pprog = static_cast<ast::StmtList*>(pAST.get())) {
                     for (auto& stmt: pprog->statements) {
-                        stmtList.append(std::move(stmt));  
+                        stmtList.append(stmt);  
                     }
                 } else {
                     std::cerr << "Error: Expected a Program node." << std::endl;
