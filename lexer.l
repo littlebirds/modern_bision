@@ -42,7 +42,7 @@ identifier      ([:alpha:][[:alnum:]_]*)
                     while (*yptr) {
                         *this->builder_ptr++ = *yptr++;
                     }
-                }
+                 }
  
 {integer}       { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_INT; }
 {float}         { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_FLOAT; }

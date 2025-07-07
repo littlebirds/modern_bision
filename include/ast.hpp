@@ -22,13 +22,24 @@ struct Expr : public Node {
     using Node::Node;
 };
 
+struct ExprSeq : public Node {
+    std::vector<std::unique_ptr<Expr>> exprs;
+
+    ExprSeq() : Node(monkey::location()) {}
+
+    void append(std::unique_ptr<Expr>& expr) {
+        exprs.emplace_back(std::move(expr));
+    }
+
+    std::string str() const override;
+};
+
 struct Stmt : public Node { 
     using Node::Node;
     int nested_lvl = 0;
 
     virtual void setIndentationLvl(int adjustment) { nested_lvl = adjustment; } 
     std::string indentate(const char* content) const;
-    
 };
 
 struct StmtList : public Node {
@@ -36,9 +47,9 @@ struct StmtList : public Node {
     int lvlNested;
     StmtList() : Node(monkey::location()) {};
 
-    void append(std::unique_ptr<Stmt> stmt) {
+    void append(std::unique_ptr<Stmt>& stmt) {
         //stmt->setIndentationLvl(lvlNested);
-        statements.push_back(std::move(stmt));    
+        statements.emplace_back(std::move(stmt));    
     }
 
     void setIndentationLvl(int adjustment) { 
@@ -91,7 +102,13 @@ struct BinOpExpr : public Expr {
 
     BinOpExpr(const monkey::location& loc, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right, const char* op)
         : Expr(loc), left(std::move(left)), right(std::move(right)), op(op) {}
-    ~BinOpExpr() = default;
+
+    std::string str() const override;
+};
+
+struct ArrayExpr : public Expr {
+    std::unique_ptr<ExprSeq> expr_seq;
+    ArrayExpr(const monkey::location& loc, std::unique_ptr<ExprSeq>& expr_seq) : Expr(loc), expr_seq(std::move(expr_seq)) {}
 
     std::string str() const override;
 };
