@@ -95,6 +95,7 @@ stmt    : EOL                                       { ; }
         ;       
 expr    : LIT_INT                                   { $$ = std::make_unique<ast::IntLitExpr>(@$, $1);}
         | LIT_FLOAT                                 { $$ = std::make_unique<ast::FloatLitExpr>(@$, $1); }
+        | LIT_STR                                   { $$ = std::make_unique<ast::StringLitExpr>(@$, $1); }   
         | MINUS expr %prec UMINUS                   { $$ = std::make_unique<ast::UnaryExpr>(@$, std::move($2), "-"); }
         | expr AND expr                             { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "and"); }
         | expr OR expr                              { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "or"); }   

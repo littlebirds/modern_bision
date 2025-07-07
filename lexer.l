@@ -24,7 +24,25 @@ integer         ({dseq})
 float           (({frac}{exp_opt})|({dseq}{exp}))
 identifier      ([:alpha:][[:alnum:]_]*)
 
+%x              STRING
+
 %%
+
+\"                  { this->builder_ptr = this->builder_buf; startStr(); BEGIN(STRING); }
+<STRING>\"          { BEGIN(INITIAL); endStr(); *this->builder_ptr = '\0'; yylval->emplace<std::string>(this->builder_buf); *loc = this->strLocation(); return Parser::token::LIT_STR; }
+<STRING>\n          {;}
+<STRING>\\n         *builder_ptr++ = '\n';
+<STRING>\\t         *builder_ptr++ = '\t';
+<STRING>\\r         *builder_ptr++ = '\r';
+<STRING>\\b         *builder_ptr++ = '\b';
+<STRING>\\f         *builder_ptr++ = '\f';
+<STRING>\\(.|\n)    *builder_ptr++ = yytext[1];
+<STRING>[^\\\n\"]+  {
+                        const char *yptr = YYText();
+                        while (*yptr) {
+                            *this->builder_ptr++ = *yptr++;
+                        }
+                    }
  
 {integer}       { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_INT; }
 {float}         { yylval->emplace<std::string>(YYText()); return Parser::token::LIT_FLOAT; }
