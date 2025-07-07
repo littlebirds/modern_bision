@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 #include "location.hh"
 
 namespace ast {
@@ -25,30 +26,27 @@ struct Stmt : public Node {
     using Node::Node;
     int nested_lvl = 0;
 
-    virtual void ident(int adjustment) { nested_lvl += adjustment; }
-    std::string str() const override;
+    virtual void setIndentationLvl(int adjustment) { nested_lvl = adjustment; } 
+    std::string indentate(const char* content) const;
+    
 };
 
 struct StmtList : public Node {
     std::vector<std::unique_ptr<Stmt>> statements;
-    
+    int lvlNested;
     StmtList() : Node(monkey::location()) {};
 
     void append(std::unique_ptr<Stmt> stmt) {
+        //stmt->setIndentationLvl(lvlNested);
         statements.push_back(std::move(stmt));    
     }
 
-    void ident(int adjustment) { for (auto& stmt : statements) { stmt->ident(adjustment); } }
-
-    std::string str() const override;
-};
-
-struct BlockStmt : public Stmt {
-    std::unique_ptr<StmtList> stmtList; 
-
-    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) { ident(adjustment); }
-
-    void ident(int adjustment) override { Stmt::ident(adjustment); stmtList->ident(adjustment); }
+    void setIndentationLvl(int adjustment) { 
+        lvlNested = adjustment;
+        for (auto& stmt: statements) {
+            stmt->setIndentationLvl(adjustment);
+        }
+    }
 
     std::string str() const override;
 };
@@ -110,6 +108,42 @@ struct LetStmt : public Stmt {
     std::unique_ptr<Expr> value;
 
     LetStmt(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Stmt(loc), ident(std::move(ident)), value(std::move(value)) {}
+    std::string str() const override;
+};
+
+struct BlockStmt : public Stmt {
+    std::unique_ptr<StmtList> stmtList; 
+
+    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) { 
+        stmtList->setIndentationLvl(adjustment); 
+    } 
+
+    std::string str() const override;
+};
+
+
+struct ElifList {
+    std::vector<std::tuple<std::unique_ptr<Expr>, std::unique_ptr<BlockStmt>>> branches; 
+
+    void append(std::unique_ptr<Expr> cond, std::unique_ptr<BlockStmt> branch) {
+        branches.emplace_back(std::move(cond), std::move(branch));
+    }
+};
+
+struct IfStmt : public Stmt {
+    std::unique_ptr<Expr> cond;
+    std::unique_ptr<BlockStmt> truthy_branch;
+    std::unique_ptr<ElifList> elseIfs;
+    std::optional<std::unique_ptr<BlockStmt>> optElse;
+
+    IfStmt(const monkey::location& loc, 
+        std::unique_ptr<Expr> cond, 
+        std::unique_ptr<BlockStmt> truthy_branch, 
+        std::unique_ptr<ElifList> elseIfs, 
+        std::optional<std::unique_ptr<BlockStmt>> optElse)
+    : Stmt(loc), cond(std::move(cond)), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)), optElse(std::move(optElse)) {}
+    
+     void setIndentationLvl(int adjustment) override;
     std::string str() const override;
 };
 
