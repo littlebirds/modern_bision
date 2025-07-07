@@ -13,7 +13,6 @@ namespace ast {
     }
 
     std::string IntLitExpr::str() const {
-        std::ostringstream ss;
         return "(" + literal + ")" ; 
     }
 
@@ -21,8 +20,8 @@ namespace ast {
         return "(" + literal + ")";
     }
 
-    std::string StringLitExpr::str() const {
-        return "\"" + literal + "\"";
+    std::string StringLitExpr::str() const {         
+        return Node::str() + "\"" + literal + "\"";
     }   
 
     std::string UnaryExpr::str() const { 
