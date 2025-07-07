@@ -85,14 +85,12 @@ opt_else: %empty                                    { $$ = std::nullopt; }
         ;
 
 stmt    : EOL                                       { ; }
-        | expr SEMICOLON                            { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); }
-        | LET Ident ASSIGN expr SEMICOLON           { $$ = std::make_unique<ast::LetStmt>(@$, $2, std::move($4)); }  
+        | expr SEMICOLON                            { $$ = std::make_unique<ast::ExprStmt>(@$, std::move($1)); }        
         | block_stmt                                { $$ = std::move($1); }
         | if_stmt                                   { $$ = std::move($1); }
         | error EOL                                 { yyerrok; }
         ;       
 
-        ;       
 expr    : LIT_INT                                   { $$ = std::make_unique<ast::IntLitExpr>(@$, $1);}
         | LIT_FLOAT                                 { $$ = std::make_unique<ast::FloatLitExpr>(@$, $1); }
         | LIT_STR                                   { $$ = std::make_unique<ast::StringLitExpr>(@$, $1); }   
@@ -112,6 +110,7 @@ expr    : LIT_INT                                   { $$ = std::make_unique<ast:
         | expr MODULO expr                          { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "%"); } 
         | expr EXPONENT expr                        { $$ = std::make_unique<ast::BinOpExpr>(@$, std::move($1), std::move($3), "^"); } 
 //        | iexp FACTORIAL                          { $$ = factorial($1); }
+        | LET Ident ASSIGN expr                     { $$ = std::make_unique<ast::LetExpr>(@$, $2, std::move($4)); }  
         | LPAREN expr RPAREN                        { $$ = std::move($2); }
         ;
  

@@ -31,7 +31,11 @@ namespace ast {
     std::string BinOpExpr::str() const { 
         return std::string("(") + left->str() + " " + std::string(op) + " " + right->str() + ")";  
     }
- 
+
+    std::string LetExpr::str() const {
+        return  std::string("let ") + ident + " = " + value->str() ;
+    } 
+
     std::string Stmt::indentate(const char* content) const { return (std::string(nested_lvl, '\t') + content); }
 
     std::string BlockStmt::str() const {
@@ -49,10 +53,6 @@ namespace ast {
     std::string ExprStmt::str() const {
         return indentate("") + expression->str() + ";";
     }
-
-    std::string LetStmt::str() const {
-        return indentate("let ") + ident + " = " + value->str() + ";";
-    } 
 
     void IfStmt::setIndentationLvl(int adjustment) {
         truthy_branch->setIndentationLvl(adjustment);

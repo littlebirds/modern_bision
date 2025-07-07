@@ -103,11 +103,11 @@ struct ExprStmt : public Stmt {
     std::string str() const override;
 };
 
-struct LetStmt : public Stmt {
+struct LetExpr : public Expr {
     std::string ident;
     std::unique_ptr<Expr> value;
 
-    LetStmt(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Stmt(loc), ident(std::move(ident)), value(std::move(value)) {}
+    LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
     std::string str() const override;
 };
 
