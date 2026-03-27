@@ -6,9 +6,13 @@
 #undef YY_DECL
 #define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval, monkey::location* loc)
 
-#define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc; 
+#define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc;
 #define FIX_MY_LINES        myloc.lines(YYLeng()); *loc = myloc
 
+#ifdef _WIN32
+// Windows: prevent unistd.h include
+#define YY_NO_UNISTD_H
+#endif
 
 %}
  
