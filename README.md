@@ -18,7 +18,7 @@ the monkey programming language, enabling agile testing out new feature ideas.
 sudo apt install flex bison cmake g++
 cmake -DCMAKE_BUILD_TYPE=Debug -S. -Bbuild
 cmake --build build
-build/parser
+./build/monkey
 ```
 
 ### Windows
@@ -36,5 +36,5 @@ Or use MinGW:
 ```cmd
 cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug -S. -Bbuild
 cmake --build build
-build\parser.exe
+build\monkey.exe
 ```

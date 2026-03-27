@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25) # Or a newer version like 3.28 for better C++23 module support
+cmake_minimum_required(VERSION 3.25)
 
 project(Monkey LANGUAGES CXX)
 
@@ -24,4 +24,16 @@ add_flex_bison_dependency(MonkeyScanner MonkeyParser)
 
 add_executable(monkey src/main.cpp src/ast.cpp ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
 
-target_include_directories(monkey PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include ${WIN_FLEX_BISON_INCLUDE})
+target_include_directories(monkey PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${WIN_FLEX_BISON_INCLUDE})
+
+# Catch2 tests
+include(FetchContent)
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG v3.7.1
+)
+FetchContent_MakeAvailable(Catch2)
+
+enable_testing()
+add_subdirectory(tests)
