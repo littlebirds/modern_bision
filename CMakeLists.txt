@@ -12,4 +12,19 @@ flex_target(MonkeyScanner lexer.l Scanner.cpp)
 add_flex_bison_dependency(MonkeyScanner MonkeyParser)
 
 add_executable(monkey src/main.cpp src/ast.cpp ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
-target_include_directories(monkey PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include )
+# Windows: Add win_flex_bison include path if it exists
+if(WIN32)
+    set(WIN_FLEX_BISON_PATHS
+        "$ENV{USERPROFILE}/bin/win_flex_bison-2.5.25"
+        "$ENV{USERPROFILE}/bin/win_flex_bison"
+        "C:/win_flex_bison"
+    )
+    foreach(path IN LISTS WIN_FLEX_BISON_PATHS)
+        if(EXISTS "${path}/FlexLexer.h")
+            set(WIN_FLEX_BISON_INCLUDE "${path}")
+            break()
+        endif()
+    endforeach()
+endif()
+
+target_include_directories(monkey PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include ${WIN_FLEX_BISON_INCLUDE})
