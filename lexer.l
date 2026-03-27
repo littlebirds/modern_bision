@@ -6,9 +6,13 @@
 #undef YY_DECL
 #define YY_DECL int monkey::Scanner::lex(monkey::Parser::semantic_type *yylval, monkey::location* loc)
 
-#define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc; 
+#define YY_USER_ACTION      myloc.step(); myloc.columns(YYLeng()); *loc = myloc;
 #define FIX_MY_LINES        myloc.lines(YYLeng()); *loc = myloc
 
+#ifdef _WIN32
+// Windows: prevent unistd.h include
+#define YY_NO_UNISTD_H
+#endif
 
 %}
  
@@ -82,8 +86,9 @@ identifier      ([:alpha:][[:alnum:]_]*)
 ","             { return Parser::token::COMMA; }
 "="             { return Parser::token::ASSIGN; }
 "."             { return Parser::token::DOT; }
+[ \t]          { /* skip whitespace */ }
 \n+             { FIX_MY_LINES; return Parser::token::EOL; }
-\/\/[^\n]*      { /* skip single line comment */ ; }
+\/\/[^\n]*     { /* skip single line comment */ }
 {identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */

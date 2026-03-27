@@ -76,7 +76,7 @@ namespace ast {
     void IfStmt::setIndentationLvl(int adjustment) {
         truthy_branch->setIndentationLvl(adjustment);
         if (elseIfs) {
-            for (const auto& [_, elseBlock] : elseIfs->branches) {
+            for (auto& elseBlock : elseIfs->branches) {
                 elseBlock->setIndentationLvl(adjustment);
             }
         }
@@ -85,18 +85,18 @@ namespace ast {
         }
     }
 
-    std::string IfStmt::str() const { 
+    std::string IfStmt::str() const {
         std::string result = indentate("if")  + cond->str() + "\n";
         result.append(truthy_branch->str());
         if (elseIfs) {
-            for (const auto& [elseCond, elseBlock] : elseIfs->branches) {
-                result.append(indentate("elif") + elseCond->str() + "\n");
-                result.append(elseBlock->str());
+            for (size_t i = 0; i < elseIfs->conditions.size(); ++i) {
+                result.append(indentate("elif") + elseIfs->conditions[i]->str() + "\n");
+                result.append(elseIfs->branches[i]->str());
             }
         }
         if (optElse) {
             result.append(optElse.value()->str());
         }
-        return result; 
+        return result;
     }
 }
