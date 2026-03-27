@@ -8,6 +8,7 @@ out/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+CMakeSettings.json
 
 # CMake
 CMakeCache.txt
