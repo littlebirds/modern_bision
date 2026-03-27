@@ -12,7 +12,7 @@ std::string parse(const std::string& input) {
     std::unique_ptr<ast::Node> pAST;
     monkey::Scanner scanner{iss, std::cerr};
     monkey::Parser parser{&scanner, pAST};
-    
+
     if (parser.parse() || !pAST) {
         return "";
     }
@@ -33,8 +33,8 @@ TEST_CASE("Test 2: 3.1* 2 + 3", "[parser]") {
     INFO("Input: " << input << " -> Result: " << result);
 }
 
-TEST_CASE("Test 3: 4 // line comment", "[parser]") {
-    std::string input = "4 // line comment";
+TEST_CASE("Test 3: with comment", "[parser]") {
+    std::string input = "4+1; // test\n";  // 先测混合
     std::string result = parse(input);
     REQUIRE(result != "");
     INFO("Input: " << input << " -> Result: " << result);

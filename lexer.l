@@ -86,8 +86,9 @@ identifier      ([:alpha:][[:alnum:]_]*)
 ","             { return Parser::token::COMMA; }
 "="             { return Parser::token::ASSIGN; }
 "."             { return Parser::token::DOT; }
+[ \t]          { /* skip whitespace */ }
 \n+             { FIX_MY_LINES; return Parser::token::EOL; }
-\/\/[^\n]*      { /* skip single line comment */ ; }
+\/\/[^\n]*     { /* skip single line comment */ }
 {identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */
