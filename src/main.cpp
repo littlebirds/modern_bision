@@ -2,6 +2,7 @@
 #include <cstring>
 #include "Scanner.hpp"
 #include "Parser.hpp"
+#include "pretty_printer.hpp"
 
 
 
@@ -37,7 +38,9 @@ int main(int argc, char** argv) {
             monkey::Parser parser{ &scanner, pAST }; 
             parser.parse();
             if (pAST) {
-                std::cout << pAST->str() << std::endl;
+                ast::PrettyPrinter printer;
+                pAST->accept(printer);
+                std::cout << printer.result() << std::endl;
                 if (auto pprog = static_cast<ast::StmtList*>(pAST.get())) {
                     for (auto& stmt: pprog->statements) {
                         stmtList.append(stmt);  
@@ -68,7 +71,9 @@ int main(int argc, char** argv) {
         monkey::Parser parser{ &scanner, pAST };
         parser.parse();
         if (pAST) {
-            std::cout << pAST->str() << std::endl; 
+            ast::PrettyPrinter printer;
+            pAST->accept(printer);
+            std::cout << printer.result() << std::endl; 
             return 0; // Clean up the allocated memory
         } else {
             std::cerr << "Parsing failed to produce AST." << std::endl;

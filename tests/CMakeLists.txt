@@ -4,6 +4,7 @@ add_executable(test_runner
     # Add more test files here, e.g.:
     # test_ast.cpp
     ${CMAKE_SOURCE_DIR}/src/ast.cpp
+    ${CMAKE_SOURCE_DIR}/src/pretty_printer.cpp
     ${CMAKE_BINARY_DIR}/Parser.cpp
     ${CMAKE_BINARY_DIR}/Scanner.cpp
 )

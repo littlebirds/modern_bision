@@ -3,9 +3,11 @@
 #include <catch2/catch_session.hpp>
 #include <sstream>
 #include <memory>
+#include <iostream>
 #include "Scanner.hpp"
 #include "Parser.hpp"
 #include "ast.hpp"
+#include "pretty_printer.hpp"
 
 std::string parse(const std::string& input) {
     std::istringstream iss(input);
@@ -16,28 +18,31 @@ std::string parse(const std::string& input) {
     if (parser.parse() || !pAST) {
         return "";
     }
-    return pAST->str();
+
+    ast::PrettyPrinter printer;
+    pAST->accept(printer);
+    return printer.result();
 }
 
 TEST_CASE("Test 1: (2 -4) * (1+ 3*1*2)", "[parser]") {
     std::string input = "(2 -4) * (1+ 3*1*2);";
     std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
     REQUIRE(result != "");
-    INFO("Input: " << input << " -> Result: " << result);
 }
 
 TEST_CASE("Test 2: 3.1* 2 + 3", "[parser]") {
     std::string input = "3.1* 2 + 3;";
     std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
     REQUIRE(result != "");
-    INFO("Input: " << input << " -> Result: " << result);
 }
 
 TEST_CASE("Test 3: with comment", "[parser]") {
-    std::string input = "4+1; // test\n";  // 先测混合
+    std::string input = "4+1; // test\n";
     std::string result = parse(input);
+    std::cout << "Input: " << input << "Result: " << result << std::endl;
     REQUIRE(result != "");
-    INFO("Input: " << input << " -> Result: " << result);
 }
 
 int main(int argc, char* argv[]) {

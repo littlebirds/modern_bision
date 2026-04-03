@@ -22,7 +22,7 @@ bison_target(MonkeyParser grammar.y Parser.cpp DEFINES_FILE Parser.hpp)
 flex_target(MonkeyScanner lexer.l Scanner.cpp)
 add_flex_bison_dependency(MonkeyScanner MonkeyParser)
 
-add_executable(monkey src/main.cpp src/ast.cpp ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
+add_executable(monkey src/main.cpp src/ast.cpp src/pretty_printer.cpp ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
 
 target_include_directories(monkey PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/include ${WIN_FLEX_BISON_INCLUDE})
 
