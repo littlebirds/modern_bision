@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 namespace eval {
 
@@ -14,17 +15,26 @@ constexpr TypeId TYPE_UNKNOWN = 0;
 
 // Built-in type IDs
 constexpr TypeId TYPE_NULL = 1;
-constexpr TypeId TYPE_BOOL = 2;
-constexpr TypeId TYPE_INT = 3;
+constexpr TypeId TYPE_STRING = 2;
+constexpr TypeId TYPE_BOOL = 3;
 constexpr TypeId TYPE_FLOAT = 4;
-constexpr TypeId TYPE_STRING = 5;
+constexpr TypeId TYPE_INT = 6;
+
 // User-defined types start from 100
 
 // Type category
 enum class TypeCategory {
-    PRIMITIVE,   // null, bool, int, float
-    OBJECT,      // heap-allocated: string, list, function, map
-    USER_DEFINED // user-defined types
+    // null, bool, int, float
+    PRIMITIVE,
+
+    // built-in types other than primitives
+    STRING,
+    ARRAY,    
+    DICTIONARY,
+    FUNCTION,
+
+    // composite types
+    OBJECT,
 };
 
 // Type metadata
@@ -133,7 +143,7 @@ private:
 
     std::unordered_map<TypeId, TypeInfo> types_;
     std::unordered_map<std::string, TypeId> nameToId_;
-    TypeId nextTypeId_;
+    std::atomic<TypeId> nextTypeId_;
 };
 
 // Helper macros for type registration

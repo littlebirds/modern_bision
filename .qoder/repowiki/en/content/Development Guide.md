@@ -2,6 +2,7 @@
 
 <cite>
 **Referenced Files in This Document**
+- [.clang-format](file://.clang-format)
 - [README.md](file://README.md)
 - [CMakeLists.txt](file://CMakeLists.txt)
 - [grammar.y](file://grammar.y)
@@ -20,6 +21,13 @@
 - [demo.txt](file://demo.txt)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Added new section on Code Formatting Standards with .clang-format configuration details
+- Updated Development Workflow to include automatic code formatting requirements
+- Enhanced Best Practices section with formatting guidelines
+- Added Formatting Compliance section for contributors
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -28,17 +36,20 @@
 5. [Detailed Component Analysis](#detailed-component-analysis)
 6. [Dependency Analysis](#dependency-analysis)
 7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting Guide](#troubleshooting-guide)
-9. [Development Workflow](#development-workflow)
-10. [Extending the Language](#extending-the-language)
-11. [Build System Integration](#build-system-integration)
-12. [Cross-Platform Considerations](#cross-platform-considerations)
-13. [Deployment Strategies](#deployment-strategies)
-14. [Contributing Guidelines](#contributing-guidelines)
-15. [Conclusion](#conclusion)
+8. [Formatting Standards](#formatting-standards)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Development Workflow](#development-workflow)
+11. [Extending the Language](#extending-the-language)
+12. [Build System Integration](#build-system-integration)
+13. [Cross-Platform Considerations](#cross-platform-considerations)
+14. [Deployment Strategies](#deployment-strategies)
+15. [Contributing Guidelines](#contributing-guidelines)
+16. [Conclusion](#conclusion)
 
 ## Introduction
 This guide documents how to extend and modify the Modern Bison compiler for the Monkey programming language. It explains how to add new language features (grammar, lexer, AST nodes), implement AST visitors, add custom output formats, maintain backward compatibility, resolve parser conflicts, and manage incremental improvements. It also covers testing, debugging, build integration, cross-platform support, and contribution best practices.
+
+**Updated** Added standardized code formatting requirements using .clang-format configuration.
 
 ## Project Structure
 The project follows a layered structure:
@@ -57,6 +68,7 @@ L["lexer.l"]
 H["include/*"]
 S["src/*"]
 T["tests/*"]
+F[".clang-format"]
 end
 subgraph "Generated"
 P["Parser.cpp/.hpp"]
@@ -72,6 +84,7 @@ SC --> M
 H --> M
 S --> M
 T --> M
+F --> M
 ```
 
 **Diagram sources**
@@ -79,6 +92,7 @@ T --> M
 - [grammar.y:1-20](file://grammar.y#L1-L20)
 - [lexer.l:1-20](file://lexer.l#L1-L20)
 - [src/main.cpp:1-25](file://src/main.cpp#L1-L25)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 **Section sources**
 - [README.md:14-41](file://README.md#L14-L41)
@@ -91,6 +105,7 @@ T --> M
 - Pretty printer is a concrete visitor that renders the AST to text.
 - Main entry supports interactive and file-based modes, invoking the scanner and parser and printing results via a visitor.
 - Tests exercise parsing and visitor rendering.
+- .clang-format establishes standardized C++ formatting across all source files.
 
 Key implementation references:
 - Grammar and precedence: [grammar.y:41-69](file://grammar.y#L41-L69)
@@ -101,6 +116,7 @@ Key implementation references:
 - Visitor interface: [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
 - Pretty printer visitor: [include/pretty_printer.hpp:9-35](file://include/pretty_printer.hpp#L9-L35)
 - Main entry and REPL loop: [src/main.cpp:25-84](file://src/main.cpp#L25-L84)
+- Code formatting: [.clang-format:1-14](file://.clang-format#L1-L14)
 
 **Section sources**
 - [grammar.y:41-129](file://grammar.y#L41-L129)
@@ -109,6 +125,7 @@ Key implementation references:
 - [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
 - [include/pretty_printer.hpp:1-38](file://include/pretty_printer.hpp#L1-L38)
 - [src/main.cpp:1-84](file://src/main.cpp#L1-L84)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Architecture Overview
 The system generates a C++ parser and scanner from the grammar and lexer specifications, then builds an executable that parses input into an AST and prints it via a visitor.
@@ -219,7 +236,7 @@ Key areas:
 - [src/main.cpp:1-84](file://src/main.cpp#L1-L84)
 
 ### Scanner (Scanner.hpp)
-- Wraps Flex lexer, exposes lex function with Parser’s semantic type and location.
+- Wraps Flex lexer, exposes lex function with Parser's semantic type and location.
 - Tracks file name, indentation level, and string literal positions.
 
 Key areas:
@@ -276,6 +293,37 @@ Tests --> Exec
 - Use location tracking judiciously; it adds overhead but improves diagnostics.
 - Avoid deep recursion in AST traversal by using iterative visitors when appropriate.
 
+## Formatting Standards
+
+The project enforces standardized C++ formatting using .clang-format with the following configuration:
+
+### Configuration Details
+- **Style**: LLVM (consistent with modern C++ standards)
+- **Indentation**: 4 spaces per level
+- **Line Length**: Maximum 120 characters
+- **Brace Placement**: Attach braces to line above (Attach style)
+- **Pointer Alignment**: Left alignment
+- **Template Declarations**: Always break template declarations
+- **Include Sorting**: Disabled (maintains logical grouping)
+
+### Formatting Rules Applied
+- Consistent 4-space indentation for all code blocks
+- Maximum 120-character line length with intelligent wrapping
+- Attach braces to containing statement for compactness
+- Left-aligned pointer and reference operators
+- Template declarations always broken to new lines
+- Control statement spacing (if/for/while) with parentheses
+
+### Files Covered by Formatting
+- AST framework and node definitions
+- Type system and evaluation classes
+- Visitor implementations and pretty printer
+- Main entry point and utility functions
+- All header and implementation files
+
+**Section sources**
+- [.clang-format:1-14](file://.clang-format#L1-L14)
+
 ## Troubleshooting Guide
 Common issues and remedies:
 - Parser conflicts
@@ -294,6 +342,10 @@ Common issues and remedies:
   - Symptom: No output or repeated prompts.
   - Action: Verify Scanner construction and Parser.parse() invocation.
   - References: [src/main.cpp:32-56](file://src/main.cpp#L32-L56)
+- Formatting conflicts
+  - Symptom: Code style warnings or CI failures.
+  - Action: Run clang-format locally before committing changes.
+  - References: [.clang-format:1-14](file://.clang-format#L1-L14)
 
 **Section sources**
 - [grammar.y:58-125](file://grammar.y#L58-L125)
@@ -301,26 +353,40 @@ Common issues and remedies:
 - [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
 - [src/ast.cpp:7-20](file://src/ast.cpp#L7-L20)
 - [src/main.cpp:32-56](file://src/main.cpp#L32-L56)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Development Workflow
-From concept to implementation:
-1. Define the feature in the grammar (tokens, non-terminals, precedence).
-2. Update the lexer to recognize new tokens.
-3. Add AST node types and update accept() implementations.
-4. Implement visitor methods for new nodes.
-5. Add or update tests to validate parsing and visitor behavior.
-6. Build and run the executable in interactive or file mode.
-7. Iterate on conflicts, diagnostics, and output formatting.
 
-Validation steps:
-- Parse representative inputs and confirm AST structure.
-- Use PrettyPrinter to verify textual output.
-- Run tests to ensure regressions are caught.
+**Updated** All development workflow steps now include mandatory code formatting compliance.
+
+From concept to implementation:
+1. **Setup**: Ensure .clang-format is applied to all new and modified code
+2. Define the feature in the grammar (tokens, non-terminals, precedence)
+3. Update the lexer to recognize new tokens
+4. Add AST node types and update accept() implementations
+5. Implement visitor methods for new nodes
+6. Add or update tests to validate parsing and visitor behavior
+7. Run clang-format to ensure consistent formatting
+8. Build and run the executable in interactive or file mode
+9. Iterate on conflicts, diagnostics, and output formatting
+
+### Code Formatting Requirements
+- Run `clang-format -i` on all modified files before committing
+- Verify formatting matches .clang-format configuration
+- Use IDE integration for automatic formatting on save
+- Check for formatting compliance in CI pipeline
+
+### Validation Steps
+- Parse representative inputs and confirm AST structure
+- Use PrettyPrinter to verify textual output
+- Run tests to ensure regressions are caught
+- Verify code formatting compliance
 
 References:
 - Grammar and lexer: [grammar.y:1-129](file://grammar.y#L1-L129), [lexer.l:1-100](file://lexer.l#L1-L100)
 - AST and visitor: [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203), [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
 - Tests: [tests/test_parser.cpp:1-52](file://tests/test_parser.cpp#L1-L52)
+- Formatting: [.clang-format:1-14](file://.clang-format#L1-L14)
 
 **Section sources**
 - [grammar.y:1-129](file://grammar.y#L1-L129)
@@ -328,6 +394,7 @@ References:
 - [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203)
 - [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
 - [tests/test_parser.cpp:1-52](file://tests/test_parser.cpp#L1-L52)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Extending the Language
 Step-by-step guides for common tasks:
@@ -361,25 +428,17 @@ Step-by-step guides for common tasks:
 - Add new node types under existing hierarchies (Expr/Stmt).
 - Ensure accept() delegates to visitor.
 - Keep location forwarding consistent.
-
-References:
-- Node base and hierarchy: [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
-- Accept implementations: [src/ast.cpp:7-20](file://src/ast.cpp#L7-L20)
+- Apply .clang-format to all new node definitions.
 
 ### Adding a New Visitor Implementation
 - Derive from ASTVisitor and implement all visit() methods.
 - Use visitor for custom output formats (e.g., JSON, bytecode).
-
-References:
-- Visitor interface: [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
-- Pretty printer example: [include/pretty_printer.hpp:9-35](file://include/pretty_printer.hpp#L9-L35)
+- Ensure proper formatting of new visitor classes.
 
 ### Incorporating Custom Output Formats
 - Implement a new visitor class similar to PrettyPrinter.
 - Add a command-line option to select the visitor.
-
-References:
-- Pretty printer implementation: [src/pretty_printer.cpp:7-95](file://src/pretty_printer.cpp#L7-L95)
+- Maintain consistent formatting across all visitor implementations.
 
 **Section sources**
 - [lexer.l:53-94](file://lexer.l#L53-L94)
@@ -389,6 +448,7 @@ References:
 - [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
 - [src/ast.cpp:7-20](file://src/ast.cpp#L7-L20)
 - [src/pretty_printer.cpp:7-45](file://src/pretty_printer.cpp#L7-L45)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Build System Integration
 - CMake finds Flex/Bison, generates Parser.cpp/Parser.hpp and Scanner.cpp, and links them into the executable.
@@ -430,19 +490,46 @@ References:
 - [README.md:16-40](file://README.md#L16-L40)
 
 ## Contributing Guidelines
-- Maintain backward compatibility by avoiding breaking changes to existing tokens and productions.
-- Resolve parser conflicts early; prefer explicit precedence over ambiguity.
-- Keep incremental improvements small and testable.
-- Add tests for new features and edge cases.
-- Document changes to grammar and visitor interfaces.
+
+**Updated** Added formatting compliance requirements for all contributions.
+
+### Code Quality Standards
+- **Formatting**: All code must comply with .clang-format configuration before submission
+- **Consistency**: Maintain consistent formatting across all source files
+- **Documentation**: Update documentation when adding new features
+- **Testing**: Add comprehensive tests for new functionality
+
+### Development Process
+1. Fork the repository and create feature branches
+2. Implement changes with proper formatting
+3. Write or update tests as needed
+4. Verify formatting compliance with clang-format
+5. Submit pull request with clear description
+
+### Formatting Compliance Checklist
+- [ ] All new and modified code formatted with clang-format
+- [ ] No trailing whitespace or formatting inconsistencies
+- [ ] Consistent indentation (4 spaces) throughout
+- [ ] Proper brace placement according to LLVM style
+- [ ] Line length within 120-character limit
+
+### Best Practices
+- Maintain backward compatibility by avoiding breaking changes to existing tokens and productions
+- Resolve parser conflicts early; prefer explicit precedence over ambiguity
+- Keep incremental improvements small and testable
+- Add tests for new features and edge cases
+- Document changes to grammar and visitor interfaces
+- Apply .clang-format to all contributed code
 
 References:
 - Testing pattern: [tests/test_parser.cpp:12-25](file://tests/test_parser.cpp#L12-L25)
 - Demo inputs: [demo.txt:1-40](file://demo.txt#L1-L40)
+- Formatting configuration: [.clang-format:1-14](file://.clang-format#L1-L14)
 
 **Section sources**
 - [tests/test_parser.cpp:1-52](file://tests/test_parser.cpp#L1-L52)
 - [demo.txt:1-40](file://demo.txt#L1-L40)
+- [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Conclusion
-This guide outlined how to extend the Modern Bison compiler for Monkey, covering grammar and lexer updates, AST node additions, visitor implementations, testing, debugging, and build integration. By following the step-by-step procedures and best practices, contributors can safely introduce new language features while preserving clarity and educational value.
+This guide outlined how to extend the Modern Bison compiler for Monkey, covering grammar and lexer updates, AST node additions, visitor implementations, testing, debugging, and build integration. The addition of .clang-format ensures consistent code formatting across all contributions. By following the step-by-step procedures, formatting requirements, and best practices, contributors can safely introduce new language features while preserving clarity, educational value, and code quality.

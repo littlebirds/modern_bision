@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <variant>
 #include <vector>
@@ -7,24 +8,22 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace eval {
+#include "type_table.hpp"
 
-// Forward declarations
-class Object;
-class Value;
+namespace eval { 
 
 // Primitive types
 struct Null {};
 using Bool = bool;
 
-// Object pointer type for heap-allocated values (strings, arrays, functions, etc.)
-using ObjectPtr = std::shared_ptr<Object>;
+// Typed pointer - pair of TypeId and raw pointer
+using TypedPtr = std::pair<TypeId, void*>;
+ 
 
-// Value holder - only primitives + object reference
-// Size: ~24-32 bytes (variant overhead + ObjectPtr)
+// Value holder - only primitives + object reference 
 class Value {
 public:
-    using ValueType = std::variant<Null, Bool, int64_t, double, ObjectPtr>;
+    using ValueType = std::variant<Null, Bool, int64_t, double, TypedPtr>;
 
     // Constructors for primitives
     Value() : data_(Null{}) {}
@@ -35,18 +34,15 @@ public:
     Value(double d) : data_(d) {}
 
     // Constructor for objects (strings, arrays, etc.)
-    Value(const ObjectPtr& obj) : data_(obj) {}
-    Value(ObjectPtr&& obj) : data_(std::move(obj)) {}
+    Value(const TypedPtr& obj) : data_(obj) {} 
 
     // Type checking
     bool isNull() const { return std::holds_alternative<Null>(data_); }
     bool isBool() const { return std::holds_alternative<Bool>(data_); }
     bool isInt() const { return std::holds_alternative<int64_t>(data_); }
-    bool isFloat() const { return std::holds_alternative<double>(data_); }
-    bool isObject() const { return std::holds_alternative<ObjectPtr>(data_); }
-
-    // Type helpers
+    bool isFloat() const { return std::holds_alternative<double>(data_); }    
     bool isNumber() const { return isInt() || isFloat(); }
+    bool isReference() const { return std::holds_alternative<TypedPtr>(data_); } 
 
     // Value accessors
     bool asBool() const {
@@ -68,11 +64,11 @@ public:
             return static_cast<double>(std::get<int64_t>(data_));
         throw std::runtime_error("Value is not a number");
     }
-
-    const ObjectPtr& asObject() const {
-        if (!isObject())
-            throw std::runtime_error("Value is not an object");
-        return std::get<ObjectPtr>(data_);
+ 
+    const TypedPtr& deref()  const {
+        if (!isReference())
+            throw std::runtime_error("Value is not a reference");
+        return std::get<TypedPtr>(data_);
     }
 
     // String representation
@@ -88,8 +84,8 @@ public:
             return asInt() != 0;
         if (isFloat())
             return asFloat() != 0.0;
-        if (isObject())
-            return asObject() != nullptr;
+        if (isReference())
+            return deref().second != nullptr;
         return false;
     }
 
@@ -119,88 +115,7 @@ public:
 
 protected:
     Object() = default;
-};
-
-// String object
-class StringObject : public Object {
-public:
-    StringObject() = default;
-    StringObject(std::string value) : value_(std::move(value)) {}
-    StringObject(const char* s) : value_(s) {}
-
-    ObjectType type() const override { return ObjectType::STRING; }
-
-    const std::string& value() const { return value_; }
-    std::string& value() { return value_; }
-
-    std::string toString() const override { return "\"" + value_ + "\""; }
-
-    bool equals(const Object& other) const override {
-        if (other.type() != ObjectType::STRING)
-            return false;
-        return value_ == static_cast<const StringObject&>(other).value_;
-    }
-
-    size_t size() const { return value_.size(); }
-
-private:
-    std::string value_;
-};
-
-// List object
-class ListObject : public Object {
-public:
-    using Elements = std::vector<Value>;
-
-    ListObject() = default;
-    ListObject(Elements elements) : elements_(std::move(elements)) {}
-
-    ObjectType type() const override { return ObjectType::LIST; }
-
-    std::string toString() const override {
-        std::ostringstream ss;
-        ss << "[";
-        for (size_t i = 0; i < elements_.size(); ++i) {
-            ss << elements_[i].toString();
-            if (i < elements_.size() - 1)
-                ss << ", ";
-        }
-        ss << "]";
-        return ss.str();
-    }
-
-    bool equals(const Object& other) const override {
-        if (other.type() != ObjectType::LIST)
-            return false;
-        return elements_ == static_cast<const ListObject&>(other).elements_;
-    }
-
-    // Element access
-    const Elements& elements() const { return elements_; }
-    Elements& elements() { return elements_; }
-
-    size_t size() const { return elements_.size(); }
-
-    const Value& at(size_t index) const {
-        if (index >= elements_.size()) {
-            throw std::out_of_range("List index out of bounds");
-        }
-        return elements_[index];
-    }
-
-    Value& at(size_t index) {
-        if (index >= elements_.size()) {
-            throw std::out_of_range("List index out of bounds");
-        }
-        return elements_[index];
-    }
-
-    void append(const Value& value) { elements_.push_back(value); }
-    void append(Value&& value) { elements_.push_back(std::move(value)); }
-
-private:
-    Elements elements_;
-};
+}; 
 
 // Value::toString implementation
 inline std::string Value::toString() const {
@@ -215,9 +130,9 @@ inline std::string Value::toString() const {
         ss << asFloat();
         return ss.str();
     }
-    if (isObject()) {
-        const auto& obj = asObject();
-        return obj ? obj->toString() : "null";
+    if (isReference()) {
+        const auto& obj = deref();
+        return " <TODO: " + TypeTable::instance().getTypeName(obj.first) + "> ";
     }
     return "<unknown>";
 }
@@ -225,17 +140,21 @@ inline std::string Value::toString() const {
 // Value::operator== implementation
 inline bool Value::operator==(const Value& other) const {
     // Both are objects - compare by pointer first, then by value
-    if (isObject() && other.isObject()) {
-        const auto& a = asObject();
-        const auto& b = other.asObject();
-        if (!a && !b)
-            return true;
-        if (!a || !b)
+    if (isReference() && other.isReference()) {
+        const auto& a = deref();
+        const auto& b = other.deref();
+        if (a.first != b.first) {
             return false;
-        return a->equals(*b);
+        } 
+        if (a.second == b.second) {
+            return true;
+        }
+        // TODO: compare object values
+        return false;
+    } else {
+        // Otherwise compare variant directly
+        return data_ == other.data_;
     }
-    // Otherwise compare variant directly
-    return data_ == other.data_;
 }
 
 } // namespace eval
