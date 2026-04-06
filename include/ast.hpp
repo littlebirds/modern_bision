@@ -29,13 +29,9 @@ struct ExprSeq : public Node {
 
     ExprSeq() : Node(monkey::location()) {}
 
-    void append(Expr* expr) {
-        exprs.emplace_back(expr);
-    }
+    void append(Expr* expr) { exprs.emplace_back(expr); }
 
-    void append(std::unique_ptr<Expr>& expr) {
-        exprs.emplace_back(std::move(expr));
-    }
+    void append(std::unique_ptr<Expr>& expr) { exprs.emplace_back(std::move(expr)); }
 
     void accept(ASTVisitor& visitor) override;
 };
@@ -50,19 +46,15 @@ struct Stmt : public Node {
 struct StmtList : public Node {
     std::vector<std::unique_ptr<Stmt>> statements;
     int lvlNested;
-    StmtList() : Node(monkey::location()) {};
+    StmtList() : Node(monkey::location()){};
 
-    void append(Stmt* stmt) {
-        statements.emplace_back(stmt);
-    }
+    void append(Stmt* stmt) { statements.emplace_back(stmt); }
 
-    void append(std::unique_ptr<Stmt>& stmt) {
-        statements.emplace_back(std::move(stmt));
-    }
+    void append(std::unique_ptr<Stmt>& stmt) { statements.emplace_back(std::move(stmt)); }
 
     void setIndentationLvl(int adjustment) {
         lvlNested = adjustment;
-        for (auto& stmt: statements) {
+        for (auto& stmt : statements) {
             stmt->setIndentationLvl(adjustment);
         }
     }
@@ -94,12 +86,13 @@ struct StringLitExpr : public LiteralExpr {
     void accept(ASTVisitor& visitor) override;
 };
 
-struct UnaryExpr: public Expr {
+struct UnaryExpr : public Expr {
     std::unique_ptr<Expr> operand;
     const char* prefix;
 
     UnaryExpr(const monkey::location& loc, Expr* expr, const char* op) : Expr(loc), operand(expr), prefix(op) {}
-    UnaryExpr(const monkey::location& loc, std::unique_ptr<Expr> expr, const char* op) : Expr(loc), operand(std::move(expr)), prefix(op) {}
+    UnaryExpr(const monkey::location& loc, std::unique_ptr<Expr> expr, const char* op)
+        : Expr(loc), operand(std::move(expr)), prefix(op) {}
 
     void accept(ASTVisitor& visitor) override;
 };
@@ -120,7 +113,8 @@ struct BinOpExpr : public Expr {
 struct ArrayExpr : public Expr {
     std::unique_ptr<ExprSeq> expr_seq;
     ArrayExpr(const monkey::location& loc, ExprSeq* expr_seq) : Expr(loc), expr_seq(expr_seq) {}
-    ArrayExpr(const monkey::location& loc, std::unique_ptr<ExprSeq>& expr_seq) : Expr(loc), expr_seq(std::move(expr_seq)) {}
+    ArrayExpr(const monkey::location& loc, std::unique_ptr<ExprSeq>& expr_seq)
+        : Expr(loc), expr_seq(std::move(expr_seq)) {}
 
     void accept(ASTVisitor& visitor) override;
 };
@@ -137,8 +131,10 @@ struct LetExpr : public Expr {
     std::string ident;
     std::unique_ptr<Expr> value;
 
-    LetExpr(const monkey::location& loc, std::string ident, Expr* value) : Expr(loc), ident(std::move(ident)), value(value) {}
-    LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
+    LetExpr(const monkey::location& loc, std::string ident, Expr* value)
+        : Expr(loc), ident(std::move(ident)), value(value) {}
+    LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value)
+        : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
     void accept(ASTVisitor& visitor) override;
 };
 
@@ -148,13 +144,13 @@ struct BlockStmt : public Stmt {
     BlockStmt(const monkey::location& loc, StmtList* stmts, int adjustment) : Stmt(loc), stmtList(stmts) {
         stmtList->setIndentationLvl(adjustment);
     }
-    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) {
+    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment)
+        : Stmt(loc), stmtList(std::move(stmts)) {
         stmtList->setIndentationLvl(adjustment);
     }
 
     void accept(ASTVisitor& visitor) override;
 };
-
 
 struct ElifList {
     std::vector<std::unique_ptr<Expr>> conditions;
@@ -177,25 +173,20 @@ struct IfStmt : public Stmt {
     std::unique_ptr<ElifList> elseIfs;
     std::optional<std::unique_ptr<BlockStmt>> optElse;
 
-    IfStmt(const monkey::location& loc,
-        Expr* cond,
-        BlockStmt* truthy_branch,
-        ElifList* elseIfs,
-        std::optional<BlockStmt*> optElse)
-    : Stmt(loc), cond(cond), truthy_branch(truthy_branch), elseIfs(elseIfs) {
+    IfStmt(const monkey::location& loc, Expr* cond, BlockStmt* truthy_branch, ElifList* elseIfs,
+           std::optional<BlockStmt*> optElse)
+        : Stmt(loc), cond(cond), truthy_branch(truthy_branch), elseIfs(elseIfs) {
         if (optElse) {
             this->optElse = std::make_optional(std::unique_ptr<BlockStmt>(*optElse));
         }
     }
 
-    IfStmt(const monkey::location& loc,
-        std::unique_ptr<Expr> cond,
-        std::unique_ptr<BlockStmt> truthy_branch,
-        std::unique_ptr<ElifList> elseIfs,
-        std::optional<std::unique_ptr<BlockStmt>> optElse)
-    : Stmt(loc), cond(std::move(cond)), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)), optElse(std::move(optElse)) {}
+    IfStmt(const monkey::location& loc, std::unique_ptr<Expr> cond, std::unique_ptr<BlockStmt> truthy_branch,
+           std::unique_ptr<ElifList> elseIfs, std::optional<std::unique_ptr<BlockStmt>> optElse)
+        : Stmt(loc), cond(std::move(cond)), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)),
+          optElse(std::move(optElse)) {}
 
-     void setIndentationLvl(int adjustment) override;
+    void setIndentationLvl(int adjustment) override;
     void accept(ASTVisitor& visitor) override;
 };
 

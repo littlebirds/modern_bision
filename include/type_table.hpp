@@ -3,9 +3,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
-#include <functional>
-#include <stdexcept>
 
 namespace eval {
 
@@ -21,14 +18,13 @@ constexpr TypeId TYPE_BOOL = 2;
 constexpr TypeId TYPE_INT = 3;
 constexpr TypeId TYPE_FLOAT = 4;
 constexpr TypeId TYPE_STRING = 5;
-constexpr TypeId TYPE_LIST = 6;
 // User-defined types start from 100
 
 // Type category
 enum class TypeCategory {
-    PRIMITIVE,    // null, bool, int, float
-    OBJECT,       // heap-allocated: string, list, function, map
-    USER_DEFINED  // user-defined types
+    PRIMITIVE,   // null, bool, int, float
+    OBJECT,      // heap-allocated: string, list, function, map
+    USER_DEFINED // user-defined types
 };
 
 // Type metadata
@@ -36,7 +32,7 @@ struct TypeInfo {
     TypeId id;
     std::string name;
     TypeCategory category;
-    size_t size;  // Size in bytes for Value representation
+    size_t size; // Size in bytes for Value representation
     std::string description;
 
     TypeInfo() : id(TYPE_UNKNOWN), name("unknown"), category(TypeCategory::PRIMITIVE), size(0) {}
@@ -53,7 +49,8 @@ public:
     }
 
     // Register a new type, returns its TypeId
-    TypeId registerType(const std::string& name, TypeCategory category, size_t size, const std::string& description = "") {
+    TypeId registerType(const std::string& name, TypeCategory category, size_t size,
+                        const std::string& description = "") {
         TypeId id = nextTypeId_++;
         TypeInfo info(id, name, category, size, description);
         types_[id] = info;
@@ -74,13 +71,9 @@ public:
     }
 
     // Check if type exists
-    bool hasType(TypeId id) const {
-        return types_.find(id) != types_.end();
-    }
+    bool hasType(TypeId id) const { return types_.find(id) != types_.end(); }
 
-    bool hasType(const std::string& name) const {
-        return nameToId_.find(name) != nameToId_.end();
-    }
+    bool hasType(const std::string& name) const { return nameToId_.find(name) != nameToId_.end(); }
 
     // Get type name by ID
     std::string getTypeName(TypeId id) const {
@@ -113,7 +106,7 @@ public:
     TypeTable& operator=(const TypeTable&) = delete;
 
 private:
-    TypeTable() : nextTypeId_(100) {  // User types start at 100
+    TypeTable() : nextTypeId_(100) { // User types start at 100
         // Register built-in types
         registerBuiltinTypes();
     }
@@ -123,11 +116,12 @@ private:
         types_[TYPE_NULL] = TypeInfo(TYPE_NULL, "null", TypeCategory::PRIMITIVE, 0, "Null/nil value");
         types_[TYPE_BOOL] = TypeInfo(TYPE_BOOL, "bool", TypeCategory::PRIMITIVE, sizeof(bool), "Boolean value");
         types_[TYPE_INT] = TypeInfo(TYPE_INT, "int", TypeCategory::PRIMITIVE, sizeof(int64_t), "64-bit signed integer");
-        types_[TYPE_FLOAT] = TypeInfo(TYPE_FLOAT, "float", TypeCategory::PRIMITIVE, sizeof(double), "64-bit floating point");
+        types_[TYPE_FLOAT] =
+            TypeInfo(TYPE_FLOAT, "float", TypeCategory::PRIMITIVE, sizeof(double), "64-bit floating point");
 
         // Object types
-        types_[TYPE_STRING] = TypeInfo(TYPE_STRING, "string", TypeCategory::OBJECT, sizeof(void*), "Heap-allocated string");
-        types_[TYPE_LIST] = TypeInfo(TYPE_LIST, "list", TypeCategory::OBJECT, sizeof(void*), "Heap-allocated list");
+        types_[TYPE_STRING] =
+            TypeInfo(TYPE_STRING, "string", TypeCategory::OBJECT, sizeof(void*), "Heap-allocated string");
 
         // Populate name lookup
         nameToId_["null"] = TYPE_NULL;
@@ -135,7 +129,6 @@ private:
         nameToId_["int"] = TYPE_INT;
         nameToId_["float"] = TYPE_FLOAT;
         nameToId_["string"] = TYPE_STRING;
-        nameToId_["list"] = TYPE_LIST;
     }
 
     std::unordered_map<TypeId, TypeInfo> types_;
@@ -144,8 +137,7 @@ private:
 };
 
 // Helper macros for type registration
-#define REGISTER_TYPE(name, category, size, desc) \
-    eval::TypeTable::instance().registerType(name, category, size, desc)
+#define REGISTER_TYPE(name, category, size, desc) eval::TypeTable::instance().registerType(name, category, size, desc)
 
 // Type checking helpers
 inline bool isPrimitiveType(TypeId id) {

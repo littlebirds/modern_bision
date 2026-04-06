@@ -50,23 +50,28 @@ public:
 
     // Value accessors
     bool asBool() const {
-        if (!isBool()) throw std::runtime_error("Value is not a boolean");
+        if (!isBool())
+            throw std::runtime_error("Value is not a boolean");
         return std::get<Bool>(data_);
     }
 
     int64_t asInt() const {
-        if (!isInt()) throw std::runtime_error("Value is not an integer");
+        if (!isInt())
+            throw std::runtime_error("Value is not an integer");
         return std::get<int64_t>(data_);
     }
 
     double asFloat() const {
-        if (isFloat()) return std::get<double>(data_);
-        if (isInt()) return static_cast<double>(std::get<int64_t>(data_));
+        if (isFloat())
+            return std::get<double>(data_);
+        if (isInt())
+            return static_cast<double>(std::get<int64_t>(data_));
         throw std::runtime_error("Value is not a number");
     }
 
     const ObjectPtr& asObject() const {
-        if (!isObject()) throw std::runtime_error("Value is not an object");
+        if (!isObject())
+            throw std::runtime_error("Value is not an object");
         return std::get<ObjectPtr>(data_);
     }
 
@@ -75,11 +80,16 @@ public:
 
     // Truthiness for conditionals
     bool isTruthy() const {
-        if (isNull()) return false;
-        if (isBool()) return asBool();
-        if (isInt()) return asInt() != 0;
-        if (isFloat()) return asFloat() != 0.0;
-        if (isObject()) return asObject() != nullptr;
+        if (isNull())
+            return false;
+        if (isBool())
+            return asBool();
+        if (isInt())
+            return asInt() != 0;
+        if (isFloat())
+            return asFloat() != 0.0;
+        if (isObject())
+            return asObject() != nullptr;
         return false;
     }
 
@@ -123,12 +133,11 @@ public:
     const std::string& value() const { return value_; }
     std::string& value() { return value_; }
 
-    std::string toString() const override {
-        return "\"" + value_ + "\"";
-    }
+    std::string toString() const override { return "\"" + value_ + "\""; }
 
     bool equals(const Object& other) const override {
-        if (other.type() != ObjectType::STRING) return false;
+        if (other.type() != ObjectType::STRING)
+            return false;
         return value_ == static_cast<const StringObject&>(other).value_;
     }
 
@@ -153,14 +162,16 @@ public:
         ss << "[";
         for (size_t i = 0; i < elements_.size(); ++i) {
             ss << elements_[i].toString();
-            if (i < elements_.size() - 1) ss << ", ";
+            if (i < elements_.size() - 1)
+                ss << ", ";
         }
         ss << "]";
         return ss.str();
     }
 
     bool equals(const Object& other) const override {
-        if (other.type() != ObjectType::LIST) return false;
+        if (other.type() != ObjectType::LIST)
+            return false;
         return elements_ == static_cast<const ListObject&>(other).elements_;
     }
 
@@ -193,9 +204,12 @@ private:
 
 // Value::toString implementation
 inline std::string Value::toString() const {
-    if (isNull()) return "null";
-    if (isBool()) return asBool() ? "true" : "false";
-    if (isInt()) return std::to_string(asInt());
+    if (isNull())
+        return "null";
+    if (isBool())
+        return asBool() ? "true" : "false";
+    if (isInt())
+        return std::to_string(asInt());
     if (isFloat()) {
         std::ostringstream ss;
         ss << asFloat();
@@ -214,8 +228,10 @@ inline bool Value::operator==(const Value& other) const {
     if (isObject() && other.isObject()) {
         const auto& a = asObject();
         const auto& b = other.asObject();
-        if (!a && !b) return true;
-        if (!a || !b) return false;
+        if (!a && !b)
+            return true;
+        if (!a || !b)
+            return false;
         return a->equals(*b);
     }
     // Otherwise compare variant directly
