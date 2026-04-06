@@ -160,9 +160,5 @@ inline bool isObjectType(TypeId id) {
     return info && info->category == TypeCategory::OBJECT;
 }
 
-inline bool isUserDefinedType(TypeId id) {
-    const TypeInfo* info = TypeTable::instance().getType(id);
-    return info && info->category == TypeCategory::USER_DEFINED;
-}
 
 } // namespace eval

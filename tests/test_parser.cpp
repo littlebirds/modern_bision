@@ -45,6 +45,27 @@ TEST_CASE("Test 3: with comment", "[parser]") {
     REQUIRE(result != "");
 }
 
+TEST_CASE("Test 4: let statement", "[parser]") {
+    std::string input = "let x = 5;";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
+TEST_CASE("Test 5: let statement with expression", "[parser]") {
+    std::string input = "let result = 2 + 3 * 4;";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
+TEST_CASE("Test 6: let statement with string", "[parser]") {
+    std::string input = "let name = \"hello\";";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
 int main(int argc, char* argv[]) {
     Catch::Session session;
     return session.run(argc, argv);
