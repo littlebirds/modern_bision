@@ -13,6 +13,13 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Updated identifier pattern documentation to reflect the critical regex syntax fix
+- Enhanced token recognition patterns section with corrected identifier syntax
+- Added troubleshooting guidance for regex syntax errors
+- Updated examples to demonstrate improved identifier recognition
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -27,6 +34,8 @@
 
 ## Introduction
 This document explains the Flex-based scanner and lexical analyzer for a C++ compiler front-end that integrates with a Bison parser. It covers the lexer specification, token recognition patterns, state management, token classification, location tracking, and the integration between the Flex-generated lexer and the Bison parser. It also includes examples of token recognition, handling of edge cases, performance considerations, and extensibility for adding new token types.
+
+**Updated** Fixed critical regex syntax error in identifier pattern recognition for Monkey language identifiers.
 
 ## Project Structure
 The project is organized around a small DSL-like language with a REPL and file-based input. The lexer is implemented in a Flex specification, the parser in a Bison grammar, and the integration is handled in C++ classes and headers.
@@ -89,8 +98,8 @@ D --> |"input"| M
 
 ## Architecture Overview
 The scanner and parser collaborate as follows:
-- The Flex scanner reads input and recognizes tokens, invoking the C++ scanner’s lex method to pass semantic values and locations to the parser.
-- The parser uses Bison’s location tracking to annotate AST nodes with precise source spans.
+- The Flex scanner reads input and recognizes tokens, invoking the C++ scanner's lex method to pass semantic values and locations to the parser.
+- The parser uses Bison's location tracking to annotate AST nodes with precise source spans.
 - The AST visitor pretty-prints the parsed program with location-aware output.
 
 ```mermaid
@@ -128,7 +137,7 @@ AST-->>User : "rendered output"
 ### Flex-based Lexer Specification and Token Recognition
 - Token recognition patterns:
   - Numeric literals: integers and floating-point numbers with optional fractional and exponent parts.
-  - Identifiers: alphabetic start followed by alphanumeric and underscore.
+  - **Fixed** Identifiers: alphabetic start followed by alphanumeric and underscore using correct POSIX character class syntax `[[:alpha:]][[:alnum:]_]*`.
   - Keywords: reserved words mapped to specific token kinds.
   - Operators and punctuation: arithmetic, comparison, logical, grouping, and separators.
   - Whitespace and end-of-line: skipped or reported as EOL.
@@ -140,6 +149,8 @@ AST-->>User : "rendered output"
   - Manage indentation level for block delimiters.
   - Handle EOF and unmatched input gracefully.
 
+**Updated** The identifier pattern has been corrected from the previous invalid syntax `[:alpha:][[:alnum:]_]*` to the proper POSIX character class syntax `[[:alpha:]][[:alnum:]_]*`.
+
 Key implementation references:
 - Token definitions and patterns: [lexer.l:21-94](file://lexer.l#L21-L94)
 - YY_DECL customization and YY_USER_ACTION/FIX_MY_LINES: [lexer.l:6-11](file://lexer.l#L6-L11)
@@ -150,7 +161,7 @@ Key implementation references:
 
 Token classification and categories:
 - Literals: LIT_INT, LIT_FLOAT, LIT_STR
-- Identifiers: Ident
+- Identifiers: Ident (using corrected POSIX character class syntax)
 - Keywords: LET, FUNCTION, FOR, RETURN, IF, ELSE, ELIF, TRUE, FALSE, AND, OR, NOT
 - Operators: PLUS, MINUS, MULTIPLY, DIVIDE, MODULO, FACTORIAL, EXPONENT, GT, LT, GE, LE, EQ, NOT_EQ, AND, OR, NOT
 - Grouping and separators: LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE, COLON, SEMICOLON, COMMA, DOT
@@ -165,7 +176,7 @@ Edge cases and malformed input:
 - [lexer.l:1-100](file://lexer.l#L1-L100)
 
 ### C++ Scanner Wrapper and State Management
-- Purpose: wrap Flex’s lexer, provide a custom lex method signature compatible with the parser, manage indentation level, and track string literal positions.
+- Purpose: wrap Flex's lexer, provide a custom lex method signature compatible with the parser, manage indentation level, and track string literal positions.
 - Key responsibilities:
   - Initialize location with filename.
   - Provide startStr/endStr and strLocation for accurate string literal spans.
@@ -198,8 +209,8 @@ References:
 - [ast.hpp:14-21](file://include/ast.hpp#L14-L21)
 
 ### Integration Between Flex Lexer and Bison Parser
-- The parser declares a parse parameter for the scanner and defines a macro to route yylex calls to the scanner’s lex method.
-- Tokens are declared with semantic value types (e.g., <std::string>, <int>) to match the scanner’s payload.
+- The parser declares a parse parameter for the scanner and defines a macro to route yylex calls to the scanner's lex method.
+- Tokens are declared with semantic value types (e.g., <std::string>, <int>) to match the scanner's payload.
 - The parser uses locations extensively for AST nodes and error reporting.
 
 Integration references:
@@ -214,7 +225,7 @@ Integration references:
 
 ### Token Classification and Categorization
 - Literals: integers, floats, and strings are emitted with semantic values and distinct token kinds.
-- Identifiers: emitted as Ident with their textual value.
+- Identifiers: emitted as Ident with their textual value using the corrected POSIX character class syntax.
 - Keywords: mapped to specific token kinds for parser rules.
 - Operators and punctuation: grouped by precedence and associativity in the grammar.
 - Whitespace and comments: not emitted as tokens; newlines emit EOL for statement separation.
@@ -277,7 +288,7 @@ These examples demonstrate how the lexer recognizes keywords, identifiers, liter
 To add a new token type:
 - Define a pattern and action in the lexer specification.
 - Declare the token in the grammar with an appropriate semantic value type.
-- Emit the token kind from the scanner’s lex method and populate the semantic value.
+- Emit the token kind from the scanner's lex method and populate the semantic value.
 - Optionally update location handling if the new token spans multiple lines or needs precise bounds.
 
 References for extending:
@@ -327,14 +338,12 @@ M --> P
 - Minimal overhead: YY_USER_ACTION and FIX_MY_LINES are lightweight macros that update positions without heavy computation.
 - State machine: The string literal state avoids repeated allocations by buffering into a fixed-size character buffer.
 - Memory usage: The builder buffer for strings is fixed-size, reducing dynamic allocation pressure during tokenization.
-- Extensibility: Adding new tokens typically involves pattern additions in the lexer without changing the parser’s core logic.
-
-[No sources needed since this section provides general guidance]
+- Extensibility: Adding new tokens typically involves pattern additions in the lexer without changing the parser's core logic.
 
 ## Troubleshooting Guide
 Common issues and resolutions:
 - Unexpected EOF or no action on unmatched input:
-  - The lexer includes a fallback rule for unmatched characters. If parsing fails, the parser’s error handler prints the location.
+  - The lexer includes a fallback rule for unmatched characters. If parsing fails, the parser's error handler prints the location.
   - References: [lexer.l:93-94](file://lexer.l#L93-L94), [grammar.y:127-129](file://grammar.y#L127-L129)
 - Incorrect line/column reporting:
   - Ensure YY_USER_ACTION and FIX_MY_LINES are applied consistently for all token actions.
@@ -343,8 +352,11 @@ Common issues and resolutions:
   - Verify startStr and endStr are called around string boundaries and strLocation is used to return the span.
   - References: [Scanner.hpp:26-28](file://include/Scanner.hpp#L26-L28)
 - Parser cannot find yylex:
-  - Confirm the parse parameter and yylex macro are defined so the parser routes to the scanner’s lex method.
+  - Confirm the parse parameter and yylex macro are defined so the parser routes to the scanner's lex method.
   - References: [grammar.y:20-39](file://grammar.y#L20-L39)
+- **Updated** Identifier recognition failures:
+  - Ensure POSIX character class syntax is used correctly in identifier patterns. The pattern should use `[[:alpha:]][[:alnum:]_]*` not `[:alpha:][[:alnum:]_]*`.
+  - References: [lexer.l:29](file://lexer.l#L29)
 
 **Section sources**
 - [lexer.l:9-10](file://lexer.l#L9-L10)
@@ -354,9 +366,7 @@ Common issues and resolutions:
 - [Scanner.hpp:26-28](file://include/Scanner.hpp#L26-L28)
 
 ## Conclusion
-The Flex-based scanner and C++ wrapper provide a robust foundation for lexical analysis, with precise location tracking and clean integration with the Bison parser. The design supports straightforward extension for new token types and offers reliable diagnostics through location-aware AST nodes. The REPL and file modes demonstrate practical usage across interactive and batch scenarios.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The Flex-based scanner and C++ wrapper provide a robust foundation for lexical analysis, with precise location tracking and clean integration with the Bison parser. The recent correction to the identifier pattern ensures proper POSIX character class syntax for accurate Monkey language identifier recognition. The design supports straightforward extension for new token types and offers reliable diagnostics through location-aware AST nodes. The REPL and file modes demonstrate practical usage across interactive and batch scenarios.
 
 ## Appendices
 
