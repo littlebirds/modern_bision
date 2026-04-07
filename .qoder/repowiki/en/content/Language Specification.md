@@ -13,6 +13,7 @@
 - [include/value.hpp](file://include/value.hpp)
 - [include/type_table.hpp](file://include/type_table.hpp)
 - [src/main.cpp](file://src/main.cpp)
+- [src/pretty_printer.cpp](file://src/pretty_printer.cpp)
 </cite>
 
 ## Table of Contents
@@ -30,6 +31,8 @@
 ## Introduction
 This document specifies the Monkey programming language implemented with Modern Bison and Flex. It covers the complete grammar, expression syntax, statement types, operator precedence and associativity, lexical rules, supported data types, operators, control flow constructs, and practical examples from the demo file. It also documents parsing rules, precedence tables, and how ambiguities are resolved, along with language limitations, reserved keywords, and naming conventions.
 
+**Updated** Added comprehensive documentation for the new let statement syntax for variable declarations, including grammar rules, AST implementation, and practical usage examples.
+
 ## Project Structure
 The project is organized around a generated parser and lexer, with AST nodes and evaluation support in include/, and a simple REPL in src/.
 
@@ -39,6 +42,7 @@ subgraph "Source"
 G["grammar.y"]
 L["lexer.l"]
 M["src/main.cpp"]
+PP["src/pretty_printer.cpp"]
 end
 subgraph "Generated"
 P["Parser.hpp"]
@@ -48,7 +52,7 @@ end
 subgraph "Include"
 AST["include/ast.hpp"]
 AV["include/ast_visitor.hpp"]
-PP["include/pretty_printer.hpp"]
+PPH["include/pretty_printer.hpp"]
 VAL["include/value.hpp"]
 TT["include/type_table.hpp"]
 SC["include/Scanner.hpp"]
@@ -57,21 +61,23 @@ G --> P
 L --> S
 S --> SC
 P --> AST
-AST --> PP
+AST --> PPH
 AST --> AV
 VAL --> TT
 M --> P
 M --> S
 M --> AST
-M --> PP
+M --> PPH
+PP --> PPH
 ```
 
 **Diagram sources**
 - [grammar.y:1-129](file://grammar.y#L1-L129)
 - [lexer.l:1-100](file://lexer.l#L1-L100)
-- [src/main.cpp:1-84](file://src/main.cpp#L1-L84)
-- [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203)
-- [include/Scanner.hpp:1-44](file://include/Scanner.hpp#L1-L44)
+- [src/main.cpp:1-81](file://src/main.cpp#L1-L81)
+- [src/pretty_printer.cpp:1-96](file://src/pretty_printer.cpp#L1-L96)
+- [include/ast.hpp:1-194](file://include/ast.hpp#L1-L194)
+- [include/Scanner.hpp:1-40](file://include/Scanner.hpp#L1-L40)
 - [include/pretty_printer.hpp:1-38](file://include/pretty_printer.hpp#L1-L38)
 - [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
 - [include/value.hpp:1-226](file://include/value.hpp#L1-L226)
@@ -79,21 +85,22 @@ M --> PP
 
 **Section sources**
 - [README.md:1-41](file://README.md#L1-L41)
-- [src/main.cpp:25-84](file://src/main.cpp#L25-L84)
+- [src/main.cpp:23-81](file://src/main.cpp#L23-L81)
 
 ## Core Components
-- Grammar and Parser: Defined in grammar.y, generating a C++ parser with Bison 3.7.4. It defines tokens, non-terminals, precedence, and production rules for expressions, statements, blocks, and if/elif/else constructs.
-- Lexer: Defined in lexer.l, using Flex to tokenize input into tokens recognized by the parser. It handles integers, floats, strings, identifiers, keywords, and punctuation.
-- AST: Nodes in include/ast.hpp represent parsed constructs (expressions, statements, blocks, if/elif/else) and are visited by pretty printers.
-- Scanner: Wrapper around Flex’s lexer in include/Scanner.hpp, providing location tracking and indentation level handling for blocks.
-- REPL: src/main.cpp orchestrates interactive and file-based parsing, printing the AST via a pretty printer.
+- Grammar and Parser: Defined in grammar.y, generating a C++ parser with Bison 3.7.4. It defines tokens, non-terminals, precedence, and production rules for expressions, statements, blocks, and if/elif/else constructs. **Updated** Now includes comprehensive let statement grammar rules for variable declarations.
+- Lexer: Defined in lexer.l, using Flex to tokenize input into tokens recognized by the parser. It handles integers, floats, strings, identifiers, keywords, and punctuation. **Updated** Recognizes "let" as a reserved keyword token.
+- AST: Nodes in include/ast.hpp represent parsed constructs (expressions, statements, blocks, if/elif/else, **Updated** including LetExpr for variable declarations) and are visited by pretty printers.
+- Scanner: Wrapper around Flex's lexer in include/Scanner.hpp, providing location tracking and indentation level handling for blocks.
+- REPL: src/main.cpp orchestrates interactive and file-based parsing, printing the AST via a pretty printer. **Updated** Pretty printer now handles LetExpr nodes with proper formatting.
 
 **Section sources**
 - [grammar.y:41-129](file://grammar.y#L41-L129)
 - [lexer.l:19-95](file://lexer.l#L19-L95)
-- [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
-- [include/Scanner.hpp:13-44](file://include/Scanner.hpp#L13-L44)
-- [src/main.cpp:25-84](file://src/main.cpp#L25-L84)
+- [include/ast.hpp:14-194](file://include/ast.hpp#L14-L194)
+- [include/Scanner.hpp:13-40](file://include/Scanner.hpp#L13-L40)
+- [src/main.cpp:23-81](file://src/main.cpp#L23-L81)
+- [src/pretty_printer.cpp:47-50](file://src/pretty_printer.cpp#L47-L50)
 
 ## Architecture Overview
 The language pipeline is:
@@ -106,27 +113,27 @@ participant REPL as "REPL (main.cpp)"
 participant Scanner as "Scanner (lexer.l)"
 participant Parser as "Parser (grammar.y)"
 participant AST as "AST (ast.hpp)"
-participant Printer as "PrettyPrinter (pretty_printer.hpp)"
+participant Printer as "PrettyPrinter (pretty_printer.cpp)"
 User->>REPL : "Enter input"
 REPL->>Scanner : "Create Scanner and feed input"
 Scanner-->>Parser : "Tokens (tokens.l)"
-Parser-->>AST : "Build AST nodes"
+Parser-->>AST : "Build AST nodes including LetExpr"
 REPL->>Printer : "Visit AST"
-Printer-->>User : "Formatted AST output"
+Printer-->>User : "Formatted AST output with let statements"
 ```
 
 **Diagram sources**
-- [src/main.cpp:34-55](file://src/main.cpp#L34-L55)
+- [src/main.cpp:32-55](file://src/main.cpp#L32-L55)
 - [lexer.l:35-94](file://lexer.l#L35-L94)
 - [grammar.y:71-125](file://grammar.y#L71-L125)
-- [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
-- [include/pretty_printer.hpp:9-38](file://include/pretty_printer.hpp#L9-L38)
+- [include/ast.hpp:14-194](file://include/ast.hpp#L14-L194)
+- [src/pretty_printer.cpp:9-38](file://src/pretty_printer.cpp#L9-L38)
 
 ## Detailed Component Analysis
 
 ### Lexical Analysis Rules
 - Tokens and Reserved Keywords:
-  - Keywords: let, fn, for, return, if, else, elif, true, false, and, or, not.
+  - Keywords: **Updated** let, fn, for, return, if, else, elif, true, false, and, or, not.
   - Operators: arithmetic (+, -, *, /, %), comparison (<, >, <=, >=, ==, !=), exponentiation (^), factorial (!), assignment (=), grouping ((), [], {}), separators (,), colon (:), dot (.), semicolon (;).
   - Identifiers: start with alphabetic character, followed by alphanumeric or underscore.
   - Strings: delimited by double quotes, with escape sequences handled during scanning.
@@ -162,12 +169,15 @@ Printer-->>User : "Formatted AST output"
 - Productions:
   - Program is a statement list.
   - Statements include empty lines, expression statements, blocks, if/elif/else, and error recovery.
-  - Expressions include literals, unary minus, arrays, binary operators, let-bindings, and parentheses.
+  - **Updated** Expressions include literals, unary minus, arrays, binary operators, **Updated** let-bindings, and parentheses.
   - If/elif/else chains are modeled with an elif_list and optional else branch.
+
+**Updated** The grammar now includes comprehensive let statement support through the production rule `LET Ident ASSIGN expr` that creates LetExpr nodes.
 
 **Section sources**
 - [grammar.y:58-67](file://grammar.y#L58-L67)
 - [grammar.y:71-125](file://grammar.y#L71-L125)
+- [grammar.y:121](file://grammar.y#L121)
 
 ### Data Types and Values
 - Primitive types:
@@ -197,15 +207,19 @@ Printer-->>User : "Formatted AST output"
   - not (non-associative).
 - Comparison:
   - <, >, <=, >=, ==, != (non-associative).
-- Assignment:
+- **Updated** Assignment and Variable Declarations:
   - let x = expr binds a variable to an expression.
+  - let statements can declare variables with any expression value including literals, function calls, arrays, and complex expressions.
 - Grouping and Sequences:
   - Parentheses group expressions.
   - Arrays are constructed from expression sequences.
 
+**Updated** Added comprehensive documentation for let statement syntax and variable declaration capabilities.
+
 **Section sources**
 - [grammar.y:102-123](file://grammar.y#L102-L123)
 - [lexer.l:71-77](file://lexer.l#L71-L77)
+- [grammar.y:121](file://grammar.y#L121)
 
 ### Control Flow
 - Blocks:
@@ -222,32 +236,42 @@ Printer-->>User : "Formatted AST output"
 
 ### AST and Visitor Pattern
 - AST Nodes:
-  - Expressions: literals, unary/binary ops, arrays, let-bindings, expression sequences.
+  - **Updated** Expressions: literals, unary/binary ops, arrays, **Updated** let-bindings, expression sequences.
   - Statements: expression statements, blocks, if/elif/else, statement lists.
+- **Updated** LetExpr Node:
+  - New AST node type for let statement declarations.
+  - Contains identifier string and value expression pointer.
+  - Supports both raw pointers and unique_ptr variants for flexibility.
 - Visitor:
-  - PrettyPrinter implements ASTVisitor to render the AST as formatted text.
+  - PrettyPrinter implements ASTVisitor to render the AST as formatted text, **Updated** including proper formatting for let statements.
+
+**Updated** Added comprehensive documentation for the new LetExpr AST node and its integration into the visitor pattern.
 
 **Section sources**
-- [include/ast.hpp:23-203](file://include/ast.hpp#L23-L203)
-- [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
+- [include/ast.hpp:23-194](file://include/ast.hpp#L23-L194)
+- [include/ast_visitor.hpp:21-43](file://include/ast_visitor.hpp#L21-L43)
 - [include/pretty_printer.hpp:9-38](file://include/pretty_printer.hpp#L9-L38)
+- [src/pretty_printer.cpp:47-50](file://src/pretty_printer.cpp#L47-L50)
 
 ### Practical Examples from Demo
 The demo illustrates:
-- Variable binding with integers and arithmetic expressions.
+- **Updated** Variable binding with integers and arithmetic expressions using let statements.
 - String literals and boolean values.
 - Arrays containing objects (maps).
 - Functions (user-defined and built-in).
 - Nested if/else logic and recursion.
 - Higher-order functions and closures.
+- **Updated** Complex let statement usage including function assignments and closure creation.
 
-Examples are shown in the demo file and demonstrate correct usage patterns for the language constructs defined by the grammar.
+**Updated** Enhanced demo examples now showcase the full capabilities of the new let statement syntax.
+
+Examples are shown in the demo file and demonstrate correct usage patterns for the language constructs defined by the grammar, including comprehensive let statement examples.
 
 **Section sources**
 - [demo.txt:1-40](file://demo.txt#L1-L40)
 
 ## Architecture Overview
-The language architecture integrates lexical analysis, parsing, AST construction, and pretty printing.
+The language architecture integrates lexical analysis, parsing, AST construction, and pretty printing with comprehensive let statement support.
 
 ```mermaid
 classDiagram
@@ -319,12 +343,14 @@ ASTVisitor <|-- PrettyPrinter
 Node --> ASTVisitor : "accept()"
 ```
 
+**Updated** Added LetExpr to the class diagram to reflect the new AST node type.
+
 **Diagram sources**
-- [include/Scanner.hpp:13-44](file://include/Scanner.hpp#L13-L44)
+- [include/Scanner.hpp:13-40](file://include/Scanner.hpp#L13-L40)
 - [grammar.y:31-39](file://grammar.y#L31-L39)
-- [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
+- [include/ast_visitor.hpp:21-43](file://include/ast_visitor.hpp#L21-L43)
 - [include/pretty_printer.hpp:9-38](file://include/pretty_printer.hpp#L9-L38)
-- [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
+- [include/ast.hpp:14-194](file://include/ast.hpp#L14-L194)
 
 ## Detailed Component Analysis
 
@@ -354,70 +380,88 @@ Associativity and precedence resolve conflicts such as:
   - Parentheses override precedence.
   - Unary minus is parsed as a prefix operator with UMINUS precedence.
   - Factorial is parsed as postfix and non-associative.
+  - **Updated** Let statements are parsed as expressions using the production rule `LET Ident ASSIGN expr`.
 - If/elif/else:
   - The grammar uses a dedicated elif_list and optional else branch to avoid shift/reduce conflicts.
 - Error Recovery:
   - The grammar includes an error token with newline recovery to continue parsing after syntax errors.
 
+**Updated** Added documentation for let statement parsing rules and how they integrate with the existing grammar.
+
 **Section sources**
 - [grammar.y:105-123](file://grammar.y#L105-L123)
 - [grammar.y:84-89](file://grammar.y#L84-L89)
 - [grammar.y:95](file://grammar.y#L95)
+- [grammar.y:121](file://grammar.y#L121)
 
 ### Lexical Rules Summary
 - Identifiers: alphabetic start, followed by alphanumeric or underscore.
 - Strings: double-quoted with escape sequences handled during scanning.
 - Numbers: integers and floats with optional fractional and exponential parts.
-- Keywords and operators: matched by explicit rules and returned as tokens.
+- **Updated** Keywords and operators: matched by explicit rules and returned as tokens, **Updated** including "let" as a reserved keyword.
+
+**Updated** Enhanced lexical rules to include the new let keyword token.
 
 **Section sources**
 - [lexer.l:21-29](file://lexer.l#L21-L29)
 - [lexer.l:51-64](file://lexer.l#L51-L64)
 - [lexer.l:71-88](file://lexer.l#L71-L88)
+- [lexer.l:53](file://lexer.l#L53)
 
 ### AST Construction and Visitor
-- The parser constructs AST nodes for expressions and statements.
-- PrettyPrinter traverses the AST to produce human-readable output.
+- The parser constructs AST nodes for expressions and statements, **Updated** including LetExpr nodes for let statements.
+- PrettyPrinter traverses the AST to produce human-readable output, **Updated** with proper formatting for let statements as "let IDENT = VALUE".
+
+**Updated** Enhanced AST construction and visitor documentation to include LetExpr handling.
 
 **Section sources**
 - [grammar.y:71-125](file://grammar.y#L71-L125)
 - [include/pretty_printer.hpp:9-38](file://include/pretty_printer.hpp#L9-L38)
+- [src/pretty_printer.cpp:47-50](file://src/pretty_printer.cpp#L47-L50)
 
 ### REPL Integration
 - Interactive mode reads from stdin, parses each input into an AST, and prints it.
 - File mode reads from a given file and prints the AST.
+- **Updated** REPL now properly handles and displays let statements with correct formatting.
+
+**Updated** REPL integration documentation now reflects let statement support.
 
 **Section sources**
 - [src/main.cpp:32-55](file://src/main.cpp#L32-L55)
-- [src/main.cpp:58-82](file://src/main.cpp#L58-L82)
+- [src/main.cpp:58-81](file://src/main.cpp#L58-L81)
 
 ## Dependency Analysis
 - Parser depends on Scanner for tokens and location tracking.
 - AST nodes depend on the visitor interface for pretty printing.
 - Value and type table support runtime typing and object representation.
+- **Updated** Pretty printer depends on LetExpr visitor implementation for proper let statement formatting.
+
+**Updated** Added dependency information for the new LetExpr node and its visitor implementation.
 
 ```mermaid
 graph LR
 Scanner["Scanner (lexer.l)"] --> Parser["Parser (grammar.y)"]
 Parser --> AST["AST (ast.hpp)"]
 AST --> Visitor["ASTVisitor (ast_visitor.hpp)"]
-Visitor --> Pretty["PrettyPrinter (pretty_printer.hpp)"]
+Visitor --> Pretty["PrettyPrinter (pretty_printer.cpp)"]
 Value["Value (value.hpp)"] --> Type["TypeTable (type_table.hpp)"]
 AST --> Value
+LetExpr["LetExpr (ast.hpp)"] --> Pretty
 ```
 
 **Diagram sources**
 - [lexer.l:35-94](file://lexer.l#L35-L94)
 - [grammar.y:71-125](file://grammar.y#L71-L125)
-- [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
-- [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
+- [include/ast.hpp:14-194](file://include/ast.hpp#L14-L194)
+- [include/ast_visitor.hpp:21-43](file://include/ast_visitor.hpp#L21-L43)
 - [include/pretty_printer.hpp:9-38](file://include/pretty_printer.hpp#L9-L38)
+- [src/pretty_printer.cpp:47-50](file://src/pretty_printer.cpp#L47-L50)
 - [include/value.hpp:25-92](file://include/value.hpp#L25-L92)
 - [include/type_table.hpp:48-144](file://include/type_table.hpp#L48-L144)
 
 **Section sources**
 - [grammar.y:31-39](file://grammar.y#L31-L39)
-- [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
+- [include/ast.hpp:14-194](file://include/ast.hpp#L14-L194)
 - [include/value.hpp:25-92](file://include/value.hpp#L25-L92)
 - [include/type_table.hpp:48-144](file://include/type_table.hpp#L48-L144)
 
@@ -425,7 +469,10 @@ AST --> Value
 - Tokenization is linear in input length; string scanning uses a buffer and a separate state to minimize overhead.
 - Parsing uses deterministic LR-style rules; precedence tables guide reductions efficiently.
 - AST traversal for pretty printing is O(N) in the number of nodes.
+- **Updated** Let statement processing adds minimal overhead as it follows the standard expression parsing pattern.
 - No explicit optimizations are present in the grammar or lexer; performance is adequate for a learning compiler.
+
+**Updated** Performance considerations now include let statement processing overhead.
 
 [No sources needed since this section provides general guidance]
 
@@ -434,10 +481,17 @@ AST --> Value
   - The parser reports errors with location information; use the printed location to identify problematic input.
 - Unexpected EOF:
   - Ensure balanced delimiters (parentheses, brackets, braces) and complete statements.
+  - **Updated** For let statements, ensure proper syntax: `let IDENTIFIER = EXPRESSION;`
 - Indentation and blocks:
   - The scanner tracks indentation for braces; mismatched blocks cause parsing failures.
 - Type mismatches:
   - The type table and value system distinguish primitives and objects; ensure operations match expected types.
+- **Updated** Let statement issues:
+  - Ensure proper identifier naming (alphabetic start, alphanumeric/underscore only).
+  - Verify that let statements are terminated with semicolons when used as standalone statements.
+  - Check that expression values are valid according to the grammar rules.
+
+**Updated** Added troubleshooting guidance for let statement syntax and common issues.
 
 **Section sources**
 - [grammar.y:127-129](file://grammar.y#L127-L129)
@@ -446,20 +500,27 @@ AST --> Value
 - [include/type_table.hpp:18-139](file://include/type_table.hpp#L18-L139)
 
 ## Conclusion
-The Monkey language specification implemented here defines a small but expressive subset suitable for experimentation. The grammar, lexer, and AST are cleanly separated, with clear precedence rules and robust error reporting. The demo showcases typical usage patterns, and the REPL enables rapid iteration on language features.
+The Monkey language specification implemented here defines a small but expressive subset suitable for experimentation. The grammar, lexer, and AST are cleanly separated, with clear precedence rules and robust error reporting. **Updated** The addition of comprehensive let statement support enhances the language's usability for variable declarations and assignments. The demo showcases typical usage patterns, including extensive let statement examples, and the REPL enables rapid iteration on language features.
+
+**Updated** Enhanced conclusion reflecting the successful integration of let statement syntax into the language specification.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
 ### Reserved Keywords
-- let, fn, for, return, if, else, elif, true, false, and, or, not.
+- **Updated** let, fn, for, return, if, else, elif, true, false, and, or, not.
+
+**Updated** Added let to the reserved keywords list.
 
 **Section sources**
 - [lexer.l:53-64](file://lexer.l#L53-L64)
 
 ### Identifier Conventions
 - Must start with an alphabetic character and may include alphanumeric characters and underscores.
+- **Updated** Valid for let statement identifiers and other identifier contexts.
+
+**Updated** Enhanced identifier conventions to include let statement usage.
 
 **Section sources**
 - [lexer.l:29](file://lexer.l#L29)
@@ -472,7 +533,10 @@ The Monkey language specification implemented here defines a small but expressiv
 - [lexer.l:27-28](file://lexer.l#L27-L28)
 
 ### Practical Examples Index
-- Variables and arithmetic: [demo.txt:1](file://demo.txt#L1)
+- **Updated** Variables and arithmetic with let statements: [demo.txt:1](file://demo.txt#L1)
 - Strings and booleans: [demo.txt:3-8](file://demo.txt#L3-L8)
 - Arrays and maps: [demo.txt:9-11](file://demo.txt#L9-L11)
 - Functions and closures: [demo.txt:13-39](file://demo.txt#L13-L39)
+- **Updated** Function assignments and closures with let: [demo.txt:14](file://demo.txt#L14), [demo.txt:34-36](file://demo.txt#L34-L36)
+
+**Updated** Added comprehensive let statement examples to the practical examples index.

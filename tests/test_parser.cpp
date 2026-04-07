@@ -14,13 +14,24 @@ std::string parse(const std::string& input) {
     std::unique_ptr<ast::Node> pAST;
     monkey::Scanner scanner{iss, std::cerr};
     monkey::Parser parser{&scanner, pAST};
+ 
+    /*
+    // Enable parser tracing - level 1 shows shift/reduce
+    parser.set_debug_level(1);
+    // Redirect debug output to cout
+    parser.set_debug_stream(std::cout);
+    */
+    int result = parser.parse();
+    std::cout << "=== Parse result: " << result << ", pAST: " << (pAST ? "valid" : "null") << " ===" << std::endl;
 
-    if (parser.parse() || !pAST) {
+    if (result != 0 || !pAST) {
+        std::cout << "Parse failed!" << std::endl;
         return "";
     }
 
     ast::PrettyPrinter printer;
     pAST->accept(printer);
+    std::cout << "Pretty print result: '" << printer.result() << "'" << std::endl;
     return printer.result();
 }
 

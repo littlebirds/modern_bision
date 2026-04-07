@@ -17,6 +17,14 @@
 - [README.md](file://README.md)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Added comprehensive documentation for new let statement test coverage
+- Updated AST and parser sections to include LetExpr implementation details
+- Enhanced test case development section with specific let statement examples
+- Updated architecture diagrams to reflect LetExpr integration
+- Added detailed explanation of let statement grammar rules and AST node structure
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -34,6 +42,7 @@ This document describes the unit testing framework for the Monkey language compi
 - Parser correctness against the grammar
 - AST generation and traversal
 - Language feature implementation (expressions, statements, control flow)
+- **New**: Comprehensive let statement functionality testing including basic declarations, complex expressions, and string literals
 - Test runner configuration, compilation setup, and continuous integration
 
 It also provides guidance for adding new tests, debugging failures, maintaining test quality, and ensuring reliable validation across platforms.
@@ -100,6 +109,7 @@ Root --> CI
 - Test runner executable: Built from test sources plus shared AST and pretty-printer implementations, linked against Catch2, and registered with CTest.
 - Parser and Scanner: Generated from grammar.y and lexer.l; integrated into tests via include paths and target linkage.
 - AST and Pretty Printer: Provide structured representation and textual rendering for assertions.
+- **Updated**: Let Statement Support: Comprehensive test coverage for let declarations including basic variables, complex expressions, and string literals.
 - CI pipeline: Installs dependencies, configures with CMake, builds, and runs tests with verbose failure reporting.
 
 Key responsibilities:
@@ -181,6 +191,11 @@ PPImpl --> PP
 - The test runner executable is defined in tests/CMakeLists.txt and includes test_parser.cpp along with shared sources and generated parser/scanner outputs. It links against Catch2 and registers the test with CTest.
 - tests/test_parser.cpp defines test cases using Catch2 macros, constructs a Scanner and Parser, parses input, and asserts that the PrettyPrinter produces non-empty output. The main function delegates to Catch::Session::run to execute tests.
 
+**Updated**: The test suite now includes comprehensive let statement coverage with three distinct test cases:
+- Basic let statement: Validates simple variable declarations like `let x = 5;`
+- Let statement with expression: Tests complex expressions in let declarations like `let result = 2 + 3 * 4;`
+- Let statement with string: Verifies string literal handling in let declarations like `let name = "hello";`
+
 ```mermaid
 sequenceDiagram
 participant Runner as "Test Runner"
@@ -220,6 +235,13 @@ Test-->>Session : REQUIRE(result != "")
 - The generated parser and scanner are produced from grammar.y and lexer.l and included in the test executable via CMake. The test constructs a Scanner and Parser, feeds input, and validates AST output.
 - The grammar defines tokens, precedence, and productions for expressions, statements, blocks, and control flow. The lexer recognizes tokens and manages locations.
 
+**Updated**: The grammar now includes comprehensive let statement support with the production rule:
+```
+expr : LET Ident ASSIGN expr { $$ = new ast::LetExpr(@$, $2, $4); }
+```
+
+This enables parsing of let declarations with proper identifier recognition and assignment semantics.
+
 ```mermaid
 flowchart TD
 Start(["Input Stream"]) --> Lex["Lexer Tokens<br/>lexer.l"]
@@ -251,7 +273,9 @@ Render --> Result(["Rendered Output"])
 
 ### AST and Pretty Printer Validation
 - The AST is composed of nodes for expressions and statements, with accept() methods delegating to a visitor. The PrettyPrinter implements ASTVisitor to render a textual representation of the AST.
-- Tests rely on the PrettyPrinter’s result to validate successful parsing and AST construction.
+- Tests rely on the PrettyPrinter's result to validate successful parsing and AST construction.
+
+**Updated**: The AST now includes comprehensive let statement support with the LetExpr node:
 
 ```mermaid
 classDiagram
@@ -264,6 +288,11 @@ class Stmt
 class ExprStmt
 class BlockStmt
 class IfStmt
+class LetExpr {
++string ident
++unique_ptr~Expr~ value
++accept(visitor) void
+}
 class ASTVisitor {
 +visit(IntLitExpr) void
 +visit(FloatLitExpr) void
@@ -287,6 +316,7 @@ Node <|-- Stmt
 Stmt <|-- ExprStmt
 Stmt <|-- BlockStmt
 Stmt <|-- IfStmt
+Expr <|-- LetExpr
 ASTVisitor <|-- PrettyPrinter
 Node --> ASTVisitor : "accept()"
 ```
@@ -308,6 +338,10 @@ Node --> ASTVisitor : "accept()"
 ### Test Case Development and Assertion Patterns
 - Test cases are declared using Catch2 macros and grouped by tags (e.g., "[parser]").
 - Assertions check that parsing yields a non-empty PrettyPrinter result, indicating successful AST construction.
+- **Updated**: New let statement test patterns include:
+  - Basic let statements: `let x = 5;` - validates simple identifier assignment
+  - Complex expressions: `let result = 2 + 3 * 4;` - tests operator precedence and expression evaluation
+  - String literals: `let name = "hello";` - verifies string token handling in let declarations
 - Example patterns:
   - Define a parse helper that creates Scanner and Parser, invokes parse(), and returns PrettyPrinter output.
   - Use REQUIRE to assert non-empty output after parsing.
@@ -365,7 +399,7 @@ Includes --> GenHpp["Generated Parser.hpp"]
 ## Performance Considerations
 - Keep test inputs concise and focused to minimize parsing overhead during frequent local runs.
 - Prefer incremental additions to test suites; avoid heavy synthetic inputs that stress the parser unless necessary.
-- Use CTest’s output-on-failure to quickly identify slow or failing test cases.
+- Use CTest's output-on-failure to quickly identify slow or failing test cases.
 - For future benchmarking, isolate parsing and pretty-printing phases and instrument timing around parser.parse() and PrettyPrinter result generation.
 
 ## Troubleshooting Guide
@@ -380,11 +414,19 @@ Common issues and resolutions:
 - CI failures:
   - Review logs for missing dependencies or configure/build errors.
   - Use ctest with verbose output to reproduce locally.
+- **Updated**: Let statement parsing issues:
+  - Verify the lexer recognizes "let" as a token (Parser::token::LET)
+  - Ensure grammar production for let statements is properly defined
+  - Check that LetExpr node is properly implemented in AST and PrettyPrinter
 
 Debugging tips:
 - Print input and PrettyPrinter result inside tests to confirm parsing behavior.
 - Temporarily simplify grammar or lexer rules to isolate regressions.
 - Add targeted tests for edge cases (comments, parentheses, precedence) to narrow down failures.
+- **Updated**: For let statement debugging, test individual components:
+  - Test lexer token recognition for "let"
+  - Test grammar production parsing
+  - Verify AST node creation and PrettyPrinter output
 
 **Section sources**
 - [tests/CMakeLists.txt](file://tests/CMakeLists.txt)
@@ -392,7 +434,7 @@ Debugging tips:
 - [.github/workflows/ci.yml](file://.github/workflows/ci.yml)
 
 ## Conclusion
-The testing framework leverages Catch2 to validate parser correctness, AST generation, and language feature coverage. By integrating generated parser/scanner outputs, shared AST components, and a pretty-printer, it provides reliable compiler validation across platforms. The CI pipeline automates verification, while CMake and FetchContent streamline setup and dependency management.
+The testing framework leverages Catch2 to validate parser correctness, AST generation, and language feature coverage. By integrating generated parser/scanner outputs, shared AST components, and a pretty-printer, it provides reliable compiler validation across platforms. The recent addition of comprehensive let statement testing demonstrates the framework's ability to validate new language features effectively. The CI pipeline automates verification, while CMake and FetchContent streamline setup and dependency management.
 
 ## Appendices
 
@@ -404,19 +446,37 @@ Steps:
 - Use PrettyPrinter output assertions to validate AST structure.
 - Run ctest to ensure new tests pass and existing ones remain stable.
 
+**Updated**: Let statement extension process:
+- Grammar modifications: Add let statement production rule in expr grammar
+- Lexer updates: Add "let" token recognition
+- AST implementation: Create LetExpr node with identifier and value fields
+- Pretty printer: Implement LetExpr visitor to render let statements
+- Test coverage: Add comprehensive test cases for basic, complex, and string let statements
+
 Regression testing strategy:
 - Maintain a baseline of representative inputs covering operators, control flow, and edge cases.
 - After grammar/lexer changes, re-run the full test suite and review diffs in PrettyPrinter outputs for unexpected AST changes.
+- **Updated**: Include let statement regression tests in baseline coverage.
 
 Edge case testing checklist:
 - Comments and whitespace
 - Parentheses and precedence
 - Empty constructs and optional branches
 - Mixed token types and invalid sequences
+- **Updated**: Let statement edge cases:
+  - Identifier naming conventions
+  - Complex expression precedence in let values
+  - String literal escaping and formatting
+  - Nested let statements and scoping
 
 Coverage considerations:
 - Aim for statement and branch coverage of parser actions and PrettyPrinter visitor methods.
 - Include negative cases (syntax errors) to verify error handling paths.
+- **Updated**: Ensure let statement coverage includes:
+  - Basic identifier assignments
+  - Complex expression evaluations
+  - String literal handling
+  - Error condition testing
 
 Platform and configuration guidelines:
 - Use the provided CI workflow as a baseline; adapt dependency installation for other systems.

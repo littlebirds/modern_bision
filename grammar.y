@@ -39,7 +39,7 @@
 }
  
 %token <int>                    LBRACE 
-%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT
+%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
