@@ -39,7 +39,7 @@
 }
  
 %token <int>                    LBRACE 
-%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT
+%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
@@ -119,6 +119,7 @@ expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@
         | expr MODULO expr                          { $$ = new ast::BinOpExpr(@$, $1, $3, "%"); }
         | expr EXPONENT expr                        { $$ = new ast::BinOpExpr(@$, $1, $3, "^"); }
         | LET Ident ASSIGN expr                     { $$ = new ast::LetExpr(@$, $2, $4); }  
+        | Ident                                     { $$ = new ast::IdentExpr(@$, $1); }
         | LPAREN expr RPAREN                        { $$ = $2; }
         ;
  

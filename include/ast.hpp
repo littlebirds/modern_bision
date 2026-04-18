@@ -9,13 +9,15 @@
 
 namespace ast {
 
+struct ASTVisitor; // Forward declaration
+
 struct Node {
     monkey::location loc;
 
     Node() = delete;
     Node(const monkey::location& location) : loc(location) {}
     virtual ~Node() = default;
-    virtual std::string str() const;
+    virtual void accept(ASTVisitor& visitor) = 0;
 };
 
 struct Expr : public Node {
@@ -27,80 +29,80 @@ struct ExprSeq : public Node {
 
     ExprSeq() : Node(monkey::location()) {}
 
-    void append(Expr* expr) {
-        exprs.emplace_back(expr);
-    }
+    void append(Expr* expr) { exprs.emplace_back(expr); }
 
-    void append(std::unique_ptr<Expr>& expr) {
-        exprs.emplace_back(std::move(expr));
-    }
+    void append(std::unique_ptr<Expr>& expr) { exprs.emplace_back(std::move(expr)); }
 
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
-struct Stmt : public Node { 
+struct Stmt : public Node {
     using Node::Node;
     int nested_lvl = 0;
 
-    virtual void setIndentationLvl(int adjustment) { nested_lvl = adjustment; } 
-    std::string indentate(const char* content) const;
+    virtual void setIndentationLvl(int adjustment) { nested_lvl = adjustment; }
 };
 
 struct StmtList : public Node {
     std::vector<std::unique_ptr<Stmt>> statements;
     int lvlNested;
-    StmtList() : Node(monkey::location()) {};
+    StmtList() : Node(monkey::location()){};
 
-    void append(Stmt* stmt) {
-        statements.emplace_back(stmt);
-    }
+    void append(Stmt* stmt) { statements.emplace_back(stmt); }
 
-    void append(std::unique_ptr<Stmt>& stmt) {
-        statements.emplace_back(std::move(stmt));
-    }
+    void append(std::unique_ptr<Stmt>& stmt) { statements.emplace_back(std::move(stmt)); }
 
     void setIndentationLvl(int adjustment) {
         lvlNested = adjustment;
-        for (auto& stmt: statements) {
+        for (auto& stmt : statements) {
             stmt->setIndentationLvl(adjustment);
         }
     }
 
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct LiteralExpr : public Expr {
-    std::string literal;    
+    std::string literal;
 
     LiteralExpr(const monkey::location& loc, std::string value) : Expr(loc), literal(std::move(value)) {}
 };
 
-struct IntLitExpr : public LiteralExpr {  
+struct IntLitExpr : public LiteralExpr {
     using LiteralExpr::LiteralExpr;
-    
-    std::string str() const override;
+
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct FloatLitExpr : public LiteralExpr {
     using LiteralExpr::LiteralExpr;
 
-    std::string str() const override;
-}; 
-
-struct StringLitExpr : public LiteralExpr {    
-    using LiteralExpr::LiteralExpr;
-
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
-struct UnaryExpr: public Expr {
+struct StringLitExpr : public LiteralExpr {
+    using LiteralExpr::LiteralExpr;
+
+    void accept(ASTVisitor& visitor) override;
+};
+
+struct IdentExpr : public Expr {
+    std::string name;
+
+    IdentExpr(const monkey::location& loc, std::string name) : Expr(loc), name(std::move(name)) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
+struct UnaryExpr : public Expr {
     std::unique_ptr<Expr> operand;
     const char* prefix;
 
     UnaryExpr(const monkey::location& loc, Expr* expr, const char* op) : Expr(loc), operand(expr), prefix(op) {}
-    UnaryExpr(const monkey::location& loc, std::unique_ptr<Expr> expr, const char* op) : Expr(loc), operand(std::move(expr)), prefix(op) {}
+    UnaryExpr(const monkey::location& loc, std::unique_ptr<Expr> expr, const char* op)
+        : Expr(loc), operand(std::move(expr)), prefix(op) {}
 
-    std::string str() const;
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct BinOpExpr : public Expr {
@@ -113,15 +115,16 @@ struct BinOpExpr : public Expr {
     BinOpExpr(const monkey::location& loc, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right, const char* op)
         : Expr(loc), left(std::move(left)), right(std::move(right)), op(op) {}
 
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct ArrayExpr : public Expr {
     std::unique_ptr<ExprSeq> expr_seq;
     ArrayExpr(const monkey::location& loc, ExprSeq* expr_seq) : Expr(loc), expr_seq(expr_seq) {}
-    ArrayExpr(const monkey::location& loc, std::unique_ptr<ExprSeq>& expr_seq) : Expr(loc), expr_seq(std::move(expr_seq)) {}
+    ArrayExpr(const monkey::location& loc, std::unique_ptr<ExprSeq>& expr_seq)
+        : Expr(loc), expr_seq(std::move(expr_seq)) {}
 
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct ExprStmt : public Stmt {
@@ -129,16 +132,18 @@ struct ExprStmt : public Stmt {
 
     ExprStmt(const monkey::location& loc, Expr* expr) : Stmt(loc), expression(expr) {}
     ExprStmt(const monkey::location& loc, std::unique_ptr<Expr> expr) : Stmt(loc), expression(std::move(expr)) {}
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct LetExpr : public Expr {
     std::string ident;
     std::unique_ptr<Expr> value;
 
-    LetExpr(const monkey::location& loc, std::string ident, Expr* value) : Expr(loc), ident(std::move(ident)), value(value) {}
-    LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value) : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
-    std::string str() const override;
+    LetExpr(const monkey::location& loc, std::string ident, Expr* value)
+        : Expr(loc), ident(std::move(ident)), value(value) {}
+    LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value)
+        : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
+    void accept(ASTVisitor& visitor) override;
 };
 
 struct BlockStmt : public Stmt {
@@ -147,13 +152,13 @@ struct BlockStmt : public Stmt {
     BlockStmt(const monkey::location& loc, StmtList* stmts, int adjustment) : Stmt(loc), stmtList(stmts) {
         stmtList->setIndentationLvl(adjustment);
     }
-    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment) : Stmt(loc), stmtList(std::move(stmts)) {
+    BlockStmt(const monkey::location& loc, std::unique_ptr<StmtList> stmts, int adjustment)
+        : Stmt(loc), stmtList(std::move(stmts)) {
         stmtList->setIndentationLvl(adjustment);
     }
 
-    std::string str() const override;
+    void accept(ASTVisitor& visitor) override;
 };
-
 
 struct ElifList {
     std::vector<std::unique_ptr<Expr>> conditions;
@@ -176,26 +181,21 @@ struct IfStmt : public Stmt {
     std::unique_ptr<ElifList> elseIfs;
     std::optional<std::unique_ptr<BlockStmt>> optElse;
 
-    IfStmt(const monkey::location& loc,
-        Expr* cond,
-        BlockStmt* truthy_branch,
-        ElifList* elseIfs,
-        std::optional<BlockStmt*> optElse)
-    : Stmt(loc), cond(cond), truthy_branch(truthy_branch), elseIfs(elseIfs) {
+    IfStmt(const monkey::location& loc, Expr* cond, BlockStmt* truthy_branch, ElifList* elseIfs,
+           std::optional<BlockStmt*> optElse)
+        : Stmt(loc), cond(cond), truthy_branch(truthy_branch), elseIfs(elseIfs) {
         if (optElse) {
             this->optElse = std::make_optional(std::unique_ptr<BlockStmt>(*optElse));
         }
     }
 
-    IfStmt(const monkey::location& loc,
-        std::unique_ptr<Expr> cond,
-        std::unique_ptr<BlockStmt> truthy_branch,
-        std::unique_ptr<ElifList> elseIfs,
-        std::optional<std::unique_ptr<BlockStmt>> optElse)
-    : Stmt(loc), cond(std::move(cond)), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)), optElse(std::move(optElse)) {}
+    IfStmt(const monkey::location& loc, std::unique_ptr<Expr> cond, std::unique_ptr<BlockStmt> truthy_branch,
+           std::unique_ptr<ElifList> elseIfs, std::optional<std::unique_ptr<BlockStmt>> optElse)
+        : Stmt(loc), cond(std::move(cond)), truthy_branch(std::move(truthy_branch)), elseIfs(std::move(elseIfs)),
+          optElse(std::move(optElse)) {}
 
-     void setIndentationLvl(int adjustment) override;
-    std::string str() const override;
+    void setIndentationLvl(int adjustment) override;
+    void accept(ASTVisitor& visitor) override;
 };
 
 } // namespace ast

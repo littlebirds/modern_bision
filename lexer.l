@@ -26,7 +26,7 @@ exp_opt         ({exp}?)
  
 integer         ({dseq})
 float           (({frac}{exp_opt})|({dseq}{exp}))
-identifier      ([:alpha:][[:alnum:]_]*)
+identifier      ([[:alpha:]][[:alnum:]_]*)
 
 %x              STR
 
@@ -89,7 +89,7 @@ identifier      ([:alpha:][[:alnum:]_]*)
 [ \t]          { /* skip whitespace */ }
 \n+             { FIX_MY_LINES; return Parser::token::EOL; }
 \/\/[^\n]*     { /* skip single line comment */ }
-{identifier}    { yylval->emplace<std::string>(YYText()); return Parser::token::Ident; }
+{identifier}    { yylval->emplace<std::string>(std::string(YYText(), YYLeng())); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
 .               /* no action on unmatched input */
  

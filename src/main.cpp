@@ -2,15 +2,14 @@
 #include <cstring>
 #include "Scanner.hpp"
 #include "Parser.hpp"
-
-
+#include "pretty_printer.hpp"
 
 void banner() {
     std::cout << "Monkey Programming Language R.E.P.L" << std::endl;
-    std::cout << "Version 0.1" << "\n\n"; 
+    std::cout << "Version 0.1"
+              << "\n\n";
     std::cout << "Type ctrl-D to parse input and type ctrl-c to exit REPL." << std::endl;
     std::cout << "<---------------------------------------------------->" << std::endl;
-
 }
 
 void usage() {
@@ -22,7 +21,7 @@ void usage() {
 }
 
 int main(int argc, char** argv) {
-   
+
     if (argc < 2) {
         usage();
         return 1;
@@ -31,16 +30,18 @@ int main(int argc, char** argv) {
     if (strncmp(mode, "-i", 2) == 0) {
         banner();
         ast::StmtList stmtList;
-        while (true) {            
-            std::unique_ptr<ast::Node> pAST;                
-            monkey::Scanner scanner{std::cin, std::cerr};            
-            monkey::Parser parser{ &scanner, pAST }; 
+        while (true) {
+            std::unique_ptr<ast::Node> pAST;
+            monkey::Scanner scanner{std::cin, std::cerr};
+            monkey::Parser parser{&scanner, pAST};
             parser.parse();
             if (pAST) {
-                std::cout << pAST->str() << std::endl;
+                ast::PrettyPrinter printer;
+                pAST->accept(printer);
+                std::cout << printer.result() << std::endl;
                 if (auto pprog = static_cast<ast::StmtList*>(pAST.get())) {
-                    for (auto& stmt: pprog->statements) {
-                        stmtList.append(stmt);  
+                    for (auto& stmt : pprog->statements) {
+                        stmtList.append(stmt);
                     }
                 } else {
                     std::cerr << "Error: Expected a Program node." << std::endl;
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
                 std::cerr << "Parsing failed to produce AST." << std::endl;
             }
             clearerr(stdin);
-        } 
+        }
     }
 
     if (strncmp(mode, "-f", 2) == 0) {
@@ -57,23 +58,24 @@ int main(int argc, char** argv) {
             std::cerr << "Error: Missing filename argument." << std::endl;
             return 1;
         }
-         std::unique_ptr<ast::Node> pAST; 
+        std::unique_ptr<ast::Node> pAST;
         std::ifstream input;
         input.open(argv[2], std::ios::in);
         if (!input.is_open()) {
             std::cerr << "Error: Could not open file " << argv[2] << " for reading." << std::endl;
-            return 1; 
+            return 1;
         }
         monkey::Scanner scanner{input, std::cerr};
-        monkey::Parser parser{ &scanner, pAST };
+        monkey::Parser parser{&scanner, pAST};
         parser.parse();
         if (pAST) {
-            std::cout << pAST->str() << std::endl; 
+            ast::PrettyPrinter printer;
+            pAST->accept(printer);
+            std::cout << printer.result() << std::endl;
             return 0; // Clean up the allocated memory
         } else {
             std::cerr << "Parsing failed to produce AST." << std::endl;
             return 1;
         }
     }
-    
 }
