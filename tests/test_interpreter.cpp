@@ -217,3 +217,82 @@ TEST_CASE("Interpreter: division by zero throws", "[interpreter]") {
 TEST_CASE("Interpreter: modulo by zero throws", "[interpreter]") {
     REQUIRE_THROWS_AS(interpret("1 % 0;"), std::runtime_error);
 }
+
+// --- String literals and operations ---
+
+TEST_CASE("Interpreter: string literal creates string value", "[interpreter]") {
+    auto val = interpret("\"hello\";");
+    REQUIRE(val.isReference());
+    auto [typeId, ptr] = val.deref();
+    REQUIRE(typeId == eval::TYPE_STRING);
+    REQUIRE(ptr != nullptr);
+}
+
+TEST_CASE("Interpreter: string toString returns content", "[interpreter]") {
+    auto val = interpret("\"hello world\";");
+    REQUIRE(val.toString() == "hello world");
+}
+
+TEST_CASE("Interpreter: string equality - same content", "[interpreter]") {
+    auto val = interpret("\"hello\" == \"hello\";");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: string inequality - different content", "[interpreter]") {
+    auto val = interpret("\"hello\" != \"world\";");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: string equality - false for different strings", "[interpreter]") {
+    auto val = interpret("\"hello\" == \"world\";");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == false);
+}
+
+TEST_CASE("Interpreter: string inequality - false for same content", "[interpreter]") {
+    auto val = interpret("\"hello\" != \"hello\";");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == false);
+}
+
+TEST_CASE("Interpreter: string let binding", "[interpreter]") {
+    auto val = interpret("let s = \"hello\"; s;");
+    REQUIRE(val.isReference());
+    REQUIRE(val.toString() == "hello");
+}
+
+TEST_CASE("Interpreter: string variable equality", "[interpreter]") {
+    auto val = interpret("let s1 = \"hello\"; let s2 = \"hello\"; s1 == s2;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: string with escape sequences", "[interpreter]") {
+    auto val = interpret("\"hello\\nworld\";");
+    REQUIRE(val.toString() == "hello\nworld");
+}
+
+TEST_CASE("Interpreter: empty string", "[interpreter]") {
+    auto val = interpret("\"\";");
+    REQUIRE(val.isReference());
+    REQUIRE(val.toString() == "");
+}
+
+TEST_CASE("Interpreter: string with special characters", "[interpreter]") {
+    auto val = interpret("\"!@#$%^&*()\";");
+    REQUIRE(val.toString() == "!@#$%^&*()");
+}
+
+TEST_CASE("Interpreter: string truthiness - non-empty is truthy", "[interpreter]") {
+    auto val = interpret("\"hello\" and 42;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
+TEST_CASE("Interpreter: block-local string does not alter outer variable", "[interpreter]") {
+    auto val = interpret("let s = \"outer\"; { let s = \"inner\"; } s;");
+    REQUIRE(val.isReference());
+    REQUIRE(val.toString() == "outer");
+}

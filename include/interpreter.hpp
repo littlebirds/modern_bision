@@ -3,10 +3,27 @@
 #include "ast_visitor.hpp"
 #include "ast.hpp"
 #include "context.hpp"
+#include "value.hpp"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace eval {
+
+// Global string object pool - persists for program lifetime
+class StringPool {
+public:
+    static StringPool& instance() {
+        static StringPool pool;
+        return pool;
+    }
+
+    Value allocateString(const std::string& str);
+
+private:
+    StringPool() = default;
+    std::vector<std::unique_ptr<StringObject>> pool_;
+};
 
 class Interpreter : public ast::ASTVisitor {
 public:

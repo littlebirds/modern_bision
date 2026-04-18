@@ -127,6 +127,27 @@ public:
 
 protected:
     Object() = default;
+};
+
+// String object for heap-allocated strings
+class StringObject : public Object {
+public:
+    explicit StringObject(std::string value) : value_(std::move(value)) {}
+
+    ObjectType type() const override { return ObjectType::STRING; }
+    std::string toString() const override { return value_; }
+    bool equals(const Object& other) const override {
+        if (other.type() != ObjectType::STRING) {
+            return false;
+        }
+        const auto& str_other = dynamic_cast<const StringObject&>(other);
+        return value_ == str_other.value_;
+    }
+
+    const std::string& value() const { return value_; }
+
+private:
+    std::string value_;
 }; 
 
 // Value::toString implementation
@@ -143,8 +164,11 @@ inline std::string Value::toString() const {
         return ss.str();
     }
     if (isReference()) {
-        const auto& obj = deref();
-        return " <TODO: " + TypeTable::instance().getTypeName(obj.first) + "> ";
+        const auto& [typeId, ptr] = deref();
+        if (typeId == TYPE_STRING && ptr != nullptr) {
+            return static_cast<const StringObject*>(ptr)->toString();
+        }
+        return "<" + TypeTable::instance().getTypeName(typeId) + ">";
     }
     return "<unknown>";
 }
@@ -157,11 +181,17 @@ inline bool Value::operator==(const Value& other) const {
         const auto& b = other.deref();
         if (a.first != b.first) {
             return false;
-        } 
+        }
+        // String comparison by value
+        if (a.first == TYPE_STRING && a.second != nullptr && b.second != nullptr) {
+            const auto* str_a = static_cast<const StringObject*>(a.second);
+            const auto* str_b = static_cast<const StringObject*>(b.second);
+            return str_a->equals(*str_b);
+        }
+        // Other objects compare by pointer
         if (a.second == b.second) {
             return true;
         }
-        // TODO: compare object values
         return false;
     } else {
         // Otherwise compare variant directly

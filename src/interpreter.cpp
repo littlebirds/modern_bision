@@ -21,9 +21,10 @@ void Interpreter::visit(ast::FloatLitExpr& node) {
 }
 
 void Interpreter::visit(ast::StringLitExpr& node) {
-    // TODO: implement when StringObject is available
-    result_ = Value();
+    result_ = StringPool::instance().allocateString(node.literal);
 }
+
+// --- Identifier ---
 
 void Interpreter::visit(ast::IdentExpr& node) {
     result_ = ctx_->get(node.name);
@@ -223,6 +224,14 @@ void Interpreter::visit(ast::IfStmt& node) {
     }
 
     result_ = Value();
+}
+
+// --- String allocation ---
+
+Value StringPool::allocateString(const std::string& str) {
+    pool_.push_back(std::make_unique<StringObject>(str));
+    StringObject* obj = pool_.back().get();
+    return Value(TypedPtr(TYPE_STRING, obj));
 }
 
 } // namespace eval
