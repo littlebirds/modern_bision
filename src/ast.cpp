@@ -13,6 +13,9 @@ void FloatLitExpr::accept(ASTVisitor& visitor) {
 void StringLitExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
+void IdentExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
 void UnaryExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }

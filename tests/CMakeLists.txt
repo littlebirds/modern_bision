@@ -1,10 +1,10 @@
 # Test executables
 add_executable(test_runner
     test_parser.cpp
-    # Add more test files here, e.g.:
-    # test_ast.cpp
+    test_interpreter.cpp
     ${CMAKE_SOURCE_DIR}/src/ast.cpp
     ${CMAKE_SOURCE_DIR}/src/pretty_printer.cpp
+    ${CMAKE_SOURCE_DIR}/src/interpreter.cpp
     ${CMAKE_BINARY_DIR}/Parser.cpp
     ${CMAKE_BINARY_DIR}/Scanner.cpp
 )

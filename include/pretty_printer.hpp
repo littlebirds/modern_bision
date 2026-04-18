@@ -18,6 +18,7 @@ public:
     void visit(IntLitExpr& node) override;
     void visit(FloatLitExpr& node) override;
     void visit(StringLitExpr& node) override;
+    void visit(IdentExpr& node) override;
     void visit(UnaryExpr& node) override;
     void visit(BinOpExpr& node) override;
     void visit(ArrayExpr& node) override;

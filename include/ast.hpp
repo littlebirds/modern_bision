@@ -86,6 +86,14 @@ struct StringLitExpr : public LiteralExpr {
     void accept(ASTVisitor& visitor) override;
 };
 
+struct IdentExpr : public Expr {
+    std::string name;
+
+    IdentExpr(const monkey::location& loc, std::string name) : Expr(loc), name(std::move(name)) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
 struct UnaryExpr : public Expr {
     std::unique_ptr<Expr> operand;
     const char* prefix;

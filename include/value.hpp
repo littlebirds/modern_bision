@@ -13,7 +13,9 @@
 namespace eval { 
 
 // Primitive types
-struct Null {};
+struct Null {
+    bool operator==(const Null&) const = default;
+};
 using Bool = bool;
 
 // Typed pointer - pair of TypeId and raw pointer
@@ -69,6 +71,16 @@ public:
         if (!isReference())
             throw std::runtime_error("Value is not a reference");
         return std::get<TypedPtr>(data_);
+    }
+
+    // Data type
+    TypeId typeId() const {
+        if (isNull())    return TYPE_NULL;
+        if (isBool())    return TYPE_BOOL;
+        if (isInt())     return TYPE_INT;
+        if (isFloat())   return TYPE_FLOAT;
+        if (isReference()) return deref().first;
+        return TYPE_UNKNOWN;
     }
 
     // String representation

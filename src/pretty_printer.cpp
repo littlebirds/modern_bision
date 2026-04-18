@@ -16,6 +16,10 @@ void PrettyPrinter::visit(StringLitExpr& node) {
     output_ << "@" << node.loc << ">>\"" << node.literal << "\"";
 }
 
+void PrettyPrinter::visit(IdentExpr& node) {
+    output_ << node.name;
+}
+
 void PrettyPrinter::visit(UnaryExpr& node) {
     output_ << node.prefix;
     node.operand->accept(*this);

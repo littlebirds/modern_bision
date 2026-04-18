@@ -119,6 +119,7 @@ expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@
         | expr MODULO expr                          { $$ = new ast::BinOpExpr(@$, $1, $3, "%"); }
         | expr EXPONENT expr                        { $$ = new ast::BinOpExpr(@$, $1, $3, "^"); }
         | LET Ident ASSIGN expr                     { $$ = new ast::LetExpr(@$, $2, $4); }  
+        | Ident                                     { $$ = new ast::IdentExpr(@$, $1); }
         | LPAREN expr RPAREN                        { $$ = $2; }
         ;
  

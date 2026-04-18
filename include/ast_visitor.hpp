@@ -8,6 +8,7 @@ namespace ast {
 struct IntLitExpr;
 struct FloatLitExpr;
 struct StringLitExpr;
+struct IdentExpr;
 struct UnaryExpr;
 struct BinOpExpr;
 struct ArrayExpr;
@@ -26,6 +27,7 @@ struct ASTVisitor {
     virtual void visit(IntLitExpr& node) = 0;
     virtual void visit(FloatLitExpr& node) = 0;
     virtual void visit(StringLitExpr& node) = 0;
+    virtual void visit(IdentExpr& node) = 0;
     virtual void visit(UnaryExpr& node) = 0;
     virtual void visit(BinOpExpr& node) = 0;
     virtual void visit(ArrayExpr& node) = 0;
