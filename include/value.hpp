@@ -18,14 +18,13 @@ struct Null {
 };
 using Bool = bool;
 
-// Typed pointer - pair of TypeId and raw pointer
-using TypedPtr = std::pair<TypeId, void*>;
- 
+// Forward declaration so Value can reference Object
+class Object;
 
 // Value holder - only primitives + object reference 
 class Value {
 public:
-    using ValueType = std::variant<Null, Bool, int64_t, double, TypedPtr>;
+    using ValueType = std::variant<Null, Bool, int64_t, double, std::shared_ptr<Object>>;
 
     // Constructors for primitives
     Value() : data_(Null{}) {}
@@ -36,7 +35,7 @@ public:
     Value(double d) : data_(d) {}
 
     // Constructor for objects (strings, arrays, etc.)
-    Value(const TypedPtr& obj) : data_(obj) {} 
+    Value(std::shared_ptr<Object> obj) : data_(std::move(obj)) {}
 
     // Type checking
     bool isNull() const { return std::holds_alternative<Null>(data_); }
@@ -44,7 +43,7 @@ public:
     bool isInt() const { return std::holds_alternative<int64_t>(data_); }
     bool isFloat() const { return std::holds_alternative<double>(data_); }    
     bool isNumber() const { return isInt() || isFloat(); }
-    bool isReference() const { return std::holds_alternative<TypedPtr>(data_); } 
+    bool isReference() const { return std::holds_alternative<std::shared_ptr<Object>>(data_); }
 
     // Value accessors
     bool asBool() const {
@@ -67,39 +66,24 @@ public:
         throw std::runtime_error("Value is not a number");
     }
  
-    const TypedPtr& deref()  const {
+    const std::shared_ptr<Object>& deref() const {
         if (!isReference())
             throw std::runtime_error("Value is not a reference");
-        return std::get<TypedPtr>(data_);
+        return std::get<std::shared_ptr<Object>>(data_);
     }
 
     // Data type
-    TypeId typeId() const {
-        if (isNull())    return TYPE_NULL;
-        if (isBool())    return TYPE_BOOL;
-        if (isInt())     return TYPE_INT;
-        if (isFloat())   return TYPE_FLOAT;
-        if (isReference()) return deref().first;
-        return TYPE_UNKNOWN;
-    }
+    TypeId typeId() const;
 
     // String representation
     std::string toString() const;
 
     // Truthiness for conditionals
-    bool isTruthy() const {
-        if (isNull())
-            return false;
-        if (isBool())
-            return asBool();
-        if (isInt())
-            return asInt() != 0;
-        if (isFloat())
-            return asFloat() != 0.0;
-        if (isReference())
-            return deref().second != nullptr;
-        return false;
-    }
+    bool isTruthy() const;
+
+    // Access the owned object, cast to a concrete type
+    template <typename T>
+    const T* as() const;
 
     // Equality comparison
     bool operator==(const Value& other) const;
@@ -121,13 +105,72 @@ class Object {
 public:
     virtual ~Object() = default;
 
+    virtual TypeId getTypeId() const = 0;
     virtual ObjectType type() const = 0;
     virtual std::string toString() const = 0;
     virtual bool equals(const Object& other) const = 0;
 
 protected:
     Object() = default;
+};
+
+// String object for heap-allocated strings
+class StringObject : public Object {
+public:
+    explicit StringObject(std::string value) : value_(std::move(value)) {}
+
+    TypeId getTypeId() const override { return TYPE_STRING; }
+    ObjectType type() const override { return ObjectType::STRING; }
+    std::string toString() const override { return value_; }
+    bool equals(const Object& other) const override {
+        if (other.type() != ObjectType::STRING) {
+            return false;
+        }
+        const auto& str_other = dynamic_cast<const StringObject&>(other);
+        return value_ == str_other.value_;
+    }
+
+    const std::string& value() const { return value_; }
+
+private:
+    std::string value_;
 }; 
+
+inline TypeId Value::typeId() const {
+    if (isNull()) return TYPE_NULL;
+    if (isBool()) return TYPE_BOOL;
+    if (isInt()) return TYPE_INT;
+    if (isFloat()) return TYPE_FLOAT;
+    if (isReference()) {
+        const auto& obj = deref();
+        if (!obj)
+            return TYPE_UNKNOWN;
+        if (dynamic_cast<const StringObject*>(obj.get()) != nullptr)
+            return TYPE_STRING;
+        return obj->getTypeId();
+    }
+    return TYPE_UNKNOWN;
+}
+
+inline bool Value::isTruthy() const {
+    if (isNull())
+        return false;
+    if (isBool())
+        return asBool();
+    if (isInt())
+        return asInt() != 0;
+    if (isFloat())
+        return asFloat() != 0.0;
+    if (isReference())
+        return deref() != nullptr;
+    return false;
+}
+
+template <typename T>
+inline const T* Value::as() const {
+    const auto& ptr = deref();
+    return dynamic_cast<const T*>(ptr.get());
+}
 
 // Value::toString implementation
 inline std::string Value::toString() const {
@@ -144,29 +187,29 @@ inline std::string Value::toString() const {
     }
     if (isReference()) {
         const auto& obj = deref();
-        return " <TODO: " + TypeTable::instance().getTypeName(obj.first) + "> ";
+        if (obj != nullptr)
+            return obj->toString();
+        return "<" + TypeTable::instance().getTypeName(TYPE_UNKNOWN) + ">";
     }
     return "<unknown>";
 }
 
 // Value::operator== implementation
 inline bool Value::operator==(const Value& other) const {
-    // Both are objects - compare by pointer first, then by value
     if (isReference() && other.isReference()) {
         const auto& a = deref();
         const auto& b = other.deref();
-        if (a.first != b.first) {
+        if (!a || !b)
+            return a == b;
+        if (a->getTypeId() != b->getTypeId())
             return false;
-        } 
-        if (a.second == b.second) {
+        // Same object (pointer identity)
+        if (a == b)
             return true;
-        }
-        // TODO: compare object values
-        return false;
-    } else {
-        // Otherwise compare variant directly
-        return data_ == other.data_;
+        // Delegate to Object's own equality (value semantics)
+        return a->equals(*b);
     }
+    return data_ == other.data_;
 }
 
 } // namespace eval

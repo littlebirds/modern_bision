@@ -3,6 +3,7 @@
 #include "ast_visitor.hpp"
 #include "ast.hpp"
 #include "context.hpp"
+#include "value.hpp"
 #include <memory>
 #include <string>
 

@@ -21,9 +21,10 @@ void Interpreter::visit(ast::FloatLitExpr& node) {
 }
 
 void Interpreter::visit(ast::StringLitExpr& node) {
-    // TODO: implement when StringObject is available
-    result_ = Value();
+    result_ = Value(std::make_shared<StringObject>(node.literal));
 }
+
+// --- Identifier ---
 
 void Interpreter::visit(ast::IdentExpr& node) {
     result_ = ctx_->get(node.name);
