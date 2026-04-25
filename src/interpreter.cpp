@@ -167,8 +167,22 @@ void Interpreter::visit(ast::BinOpExpr& node) {
 // --- Compound nodes ---
 
 void Interpreter::visit(ast::ArrayExpr& node) {
-    // TODO: implement when array/list infrastructure is available
-    result_ = Value();
+    std::vector<Value> elements;
+    elements.reserve(node.expr_seq->exprs.size());
+
+    TypeId elementTypeId = TYPE_UNKNOWN;
+    for (auto& expr : node.expr_seq->exprs) {
+        Value element = evaluate(*expr);
+        TypeId currentType = element.typeId();
+
+        if (elementTypeId == TYPE_UNKNOWN) {
+            elementTypeId = currentType;
+        } else if (currentType != elementTypeId) {
+            throw std::runtime_error("Array elements must all have the same type");
+        }
+        elements.push_back(std::move(element));
+    }
+    result_ = Value(std::make_shared<ArrayObject>(std::move(elements), elementTypeId));
 }
 
 void Interpreter::visit(ast::LetExpr& node) {

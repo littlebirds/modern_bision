@@ -296,3 +296,43 @@ TEST_CASE("Interpreter: block-local string does not alter outer variable", "[int
     REQUIRE(val.isReference());
     REQUIRE(val.toString() == "outer");
 }
+
+// --- Arrays ---
+
+TEST_CASE("Interpreter: array literal creates array object", "[interpreter]") {
+    auto val = interpret("[1, 2, 3];");
+    REQUIRE(val.isReference());
+
+    auto array = val.as<eval::ArrayObject>();
+    REQUIRE(array != nullptr);
+    REQUIRE(array->size() == 3);
+    CHECK(array->elements()[0].asInt() == 1);
+    CHECK(array->elements()[1].asInt() == 2);
+    CHECK(array->elements()[2].asInt() == 3);
+}
+
+TEST_CASE("Interpreter: array type id is determined by element type and length", "[interpreter]") {
+    auto a = interpret("[1, 2, 3];");
+    auto b = interpret("[4, 5, 6];");
+    auto c = interpret("[1, 2];");
+    auto d = interpret("[1.0, 2.0, 3.0];");
+
+    CHECK(a.typeId() == b.typeId());
+    CHECK(a.typeId() != c.typeId());
+    CHECK(a.typeId() != d.typeId());
+
+    const eval::TypeId expected = eval::TypeTable::instance().getArrayTypeId(eval::TYPE_INT, 3);
+    CHECK(a.typeId() == expected);
+}
+
+TEST_CASE("Interpreter: empty array has deterministic unknown-element type", "[interpreter]") {
+    auto val = interpret("[];");
+    REQUIRE(val.isReference());
+
+    const eval::TypeId expected = eval::TypeTable::instance().getArrayTypeId(eval::TYPE_UNKNOWN, 0);
+    CHECK(val.typeId() == expected);
+}
+
+TEST_CASE("Interpreter: mixed-type array throws", "[interpreter]") {
+    REQUIRE_THROWS_AS(interpret("[1, 2.0];"), std::runtime_error);
+}
