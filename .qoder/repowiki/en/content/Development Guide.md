@@ -13,8 +13,11 @@
 - [include/pretty_printer.hpp](file://include/pretty_printer.hpp)
 - [include/value.hpp](file://include/value.hpp)
 - [include/type_table.hpp](file://include/type_table.hpp)
+- [include/interpreter.hpp](file://include/interpreter.hpp)
+- [include/context.hpp](file://include/context.hpp)
 - [src/main.cpp](file://src/main.cpp)
 - [src/ast.cpp](file://src/ast.cpp)
+- [src/interpreter.cpp](file://src/interpreter.cpp)
 - [src/pretty_printer.cpp](file://src/pretty_printer.cpp)
 - [tests/test_parser.cpp](file://tests/test_parser.cpp)
 - [tests/CMakeLists.txt](file://tests/CMakeLists.txt)
@@ -23,10 +26,12 @@
 
 ## Update Summary
 **Changes Made**
-- Added new section on Code Formatting Standards with .clang-format configuration details
-- Updated Development Workflow to include automatic code formatting requirements
-- Enhanced Best Practices section with formatting guidelines
-- Added Formatting Compliance section for contributors
+- Updated Evaluation Types and Type System section to reflect the modern object-oriented design with StringObject and ArrayObject classes
+- Removed references to the old TypedPtr-based value system and previous type system limitations
+- Added comprehensive documentation for the new Value class with variant-based design
+- Updated interpreter implementation details to reflect the current evaluation architecture
+- Enhanced type system documentation with TypeTable singleton pattern and type categorization
+- Added context management documentation for the new evaluation framework
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -49,7 +54,7 @@
 ## Introduction
 This guide documents how to extend and modify the Modern Bison compiler for the Monkey programming language. It explains how to add new language features (grammar, lexer, AST nodes), implement AST visitors, add custom output formats, maintain backward compatibility, resolve parser conflicts, and manage incremental improvements. It also covers testing, debugging, build integration, cross-platform support, and contribution best practices.
 
-**Updated** Added standardized code formatting requirements using .clang-format configuration.
+**Updated** The project now features a modern object-oriented design with a comprehensive type system replacing the previous TypedPtr-based approach.
 
 ## Project Structure
 The project follows a layered structure:
@@ -57,7 +62,8 @@ The project follows a layered structure:
 - Generated parser and scanner integrate with the AST.
 - AST nodes form an extensible visitor-based model.
 - Pretty printer demonstrates a concrete visitor implementation.
-- Tests validate parsing behavior.
+- Interpreter provides evaluation capabilities with the new object-oriented type system.
+- Tests validate parsing behavior and evaluation results.
 - CMake orchestrates generation and linking of parser/scanner.
 
 ```mermaid
@@ -103,6 +109,7 @@ F --> M
 - Lexer recognizes tokens and manages locations, including string literals and indentation for blocks.
 - AST provides a visitor-driven model for expressions and statements.
 - Pretty printer is a concrete visitor that renders the AST to text.
+- Interpreter provides evaluation capabilities using the new object-oriented type system.
 - Main entry supports interactive and file-based modes, invoking the scanner and parser and printing results via a visitor.
 - Tests exercise parsing and visitor rendering.
 - .clang-format establishes standardized C++ formatting across all source files.
@@ -115,6 +122,7 @@ Key implementation references:
 - AST node hierarchy: [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
 - Visitor interface: [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
 - Pretty printer visitor: [include/pretty_printer.hpp:9-35](file://include/pretty_printer.hpp#L9-L35)
+- Interpreter implementation: [include/interpreter.hpp:12-40](file://include/interpreter.hpp#L12-L40)
 - Main entry and REPL loop: [src/main.cpp:25-84](file://src/main.cpp#L25-L84)
 - Code formatting: [.clang-format:1-14](file://.clang-format#L1-L14)
 
@@ -124,11 +132,12 @@ Key implementation references:
 - [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203)
 - [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
 - [include/pretty_printer.hpp:1-38](file://include/pretty_printer.hpp#L1-L38)
+- [include/interpreter.hpp:1-43](file://include/interpreter.hpp#L1-L43)
 - [src/main.cpp:1-84](file://src/main.cpp#L1-L84)
 - [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Architecture Overview
-The system generates a C++ parser and scanner from the grammar and lexer specifications, then builds an executable that parses input into an AST and prints it via a visitor.
+The system generates a C++ parser and scanner from the grammar and lexer specifications, then builds an executable that parses input into an AST and prints it via a visitor. The interpreter provides evaluation capabilities using the modern object-oriented type system.
 
 ```mermaid
 sequenceDiagram
@@ -137,6 +146,7 @@ participant Main as "main.cpp"
 participant Scanner as "Scanner.hpp"
 participant Parser as "grammar.y (generated)"
 participant AST as "ast.hpp"
+participant Interpreter as "interpreter.hpp"
 participant Printer as "pretty_printer.hpp"
 User->>Main : "Run with -i or -f"
 Main->>Scanner : "Construct Scanner"
@@ -145,6 +155,9 @@ Parser->>Scanner : "yylex() produces tokens"
 Scanner-->>Parser : "Token + semantic value"
 Parser->>AST : "Build AST nodes in actions"
 Parser-->>Main : "AST root"
+Main->>Interpreter : "Create Interpreter"
+AST->>Interpreter : "accept(visitor)"
+Interpreter-->>Main : "Evaluated Value"
 Main->>Printer : "Create PrettyPrinter"
 AST->>Printer : "accept(visitor)"
 Printer-->>Main : "Rendered output"
@@ -156,6 +169,7 @@ Main-->>User : "Print result"
 - [include/Scanner.hpp:13-42](file://include/Scanner.hpp#L13-L42)
 - [grammar.y:1-20](file://grammar.y#L1-L20)
 - [include/ast.hpp:14-203](file://include/ast.hpp#L14-L203)
+- [include/interpreter.hpp:12-40](file://include/interpreter.hpp#L12-L40)
 - [include/pretty_printer.hpp:9-35](file://include/pretty_printer.hpp#L9-L35)
 
 ## Detailed Component Analysis
@@ -222,6 +236,22 @@ Key areas:
 - [include/pretty_printer.hpp:1-38](file://include/pretty_printer.hpp#L1-L38)
 - [src/pretty_printer.cpp:1-96](file://src/pretty_printer.cpp#L1-L96)
 
+### Interpreter and Evaluation System (interpreter.hpp, interpreter.cpp)
+- Provides evaluation capabilities using the new object-oriented type system.
+- Implements ASTVisitor to traverse and evaluate AST nodes.
+- Manages variable contexts and evaluates expressions with proper type handling.
+- Supports arithmetic, comparison, logical operations, and compound data structures.
+
+Key areas:
+- Interpreter class and visit methods: [include/interpreter.hpp:12-40](file://include/interpreter.hpp#L12-L40)
+- Expression evaluation: [src/interpreter.cpp:8-244](file://src/interpreter.cpp#L8-L244)
+- Context management: [include/context.hpp:10-39](file://include/context.hpp#L10-L39)
+
+**Section sources**
+- [include/interpreter.hpp:1-43](file://include/interpreter.hpp#L1-L43)
+- [src/interpreter.cpp:1-244](file://src/interpreter.cpp#L1-L244)
+- [include/context.hpp:1-42](file://include/context.hpp#L1-L42)
+
 ### Main Entry Point (main.cpp)
 - Supports interactive (-i) and file (-f) modes.
 - Constructs Scanner and Parser, runs parse, and prints via PrettyPrinter.
@@ -247,18 +277,21 @@ Key areas:
 - [include/Scanner.hpp:1-44](file://include/Scanner.hpp#L1-L44)
 
 ### Evaluation Types and Type System (value.hpp, type_table.hpp)
-- Value holds primitives and object pointers with type checks and conversions.
-- Object hierarchy includes StringObject and ListObject.
-- TypeTable registers and queries types by id/name.
+- **Updated** Modern object-oriented design with Value class using std::variant for type-safe storage.
+- Value class stores primitives (Null, Bool, int64_t, double) and shared_ptr<Object> for heap-allocated objects.
+- Object hierarchy includes StringObject and ArrayObject with proper polymorphic behavior.
+- TypeTable provides singleton pattern for type registration and lookup with category classification.
+- Comprehensive type checking, conversion, and equality comparison capabilities.
 
 Key areas:
 - Value variants and accessors: [include/value.hpp:25-92](file://include/value.hpp#L25-L92)
-- Object base and derived types: [include/value.hpp:102-192](file://include/value.hpp#L102-L192)
-- TypeTable registration and lookup: [include/type_table.hpp:48-144](file://include/type_table.hpp#L48-L144)
+- Object base and derived types: [include/value.hpp:97-170](file://include/value.hpp#L97-L170)
+- TypeTable registration and lookup: [include/type_table.hpp:67-133](file://include/type_table.hpp#L67-L133)
+- Type identification and conversion: [include/value.hpp:172-206](file://include/value.hpp#L172-L206)
 
 **Section sources**
-- [include/value.hpp:1-226](file://include/value.hpp#L1-L226)
-- [include/type_table.hpp:1-167](file://include/type_table.hpp#L1-L167)
+- [include/value.hpp:1-249](file://include/value.hpp#L1-L249)
+- [include/type_table.hpp:1-138](file://include/type_table.hpp#L1-L138)
 
 ## Dependency Analysis
 The build system integrates Flex/Bison generation with CMake, linking generated sources into the executable and enabling tests.
@@ -292,6 +325,8 @@ Tests --> Exec
 - Keep semantic actions lightweight; defer heavy work to later passes (e.g., evaluation).
 - Use location tracking judiciously; it adds overhead but improves diagnostics.
 - Avoid deep recursion in AST traversal by using iterative visitors when appropriate.
+- **Updated** The new object-oriented design with shared_ptr<Object> provides efficient memory management for complex data structures.
+- Variant-based Value class ensures type-safe storage with minimal overhead.
 
 ## Formatting Standards
 
@@ -318,6 +353,7 @@ The project enforces standardized C++ formatting using .clang-format with the fo
 - AST framework and node definitions
 - Type system and evaluation classes
 - Visitor implementations and pretty printer
+- Interpreter and context management
 - Main entry point and utility functions
 - All header and implementation files
 
@@ -342,6 +378,10 @@ Common issues and remedies:
   - Symptom: No output or repeated prompts.
   - Action: Verify Scanner construction and Parser.parse() invocation.
   - References: [src/main.cpp:32-56](file://src/main.cpp#L32-L56)
+- **Updated** Type system issues
+  - Symptom: Runtime errors when accessing values or type mismatches.
+  - Action: Use Value.isXxx() methods for type checking before casting, ensure proper object lifetime with shared_ptr.
+  - References: [include/value.hpp:40-92](file://include/value.hpp#L40-L92), [include/interpreter.hpp:12-40](file://include/interpreter.hpp#L12-L40)
 - Formatting conflicts
   - Symptom: Code style warnings or CI failures.
   - Action: Run clang-format locally before committing changes.
@@ -353,11 +393,13 @@ Common issues and remedies:
 - [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40)
 - [src/ast.cpp:7-20](file://src/ast.cpp#L7-L20)
 - [src/main.cpp:32-56](file://src/main.cpp#L32-L56)
+- [include/value.hpp:40-92](file://include/value.hpp#L40-L92)
+- [include/interpreter.hpp:12-40](file://include/interpreter.hpp#L12-L40)
 - [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Development Workflow
 
-**Updated** All development workflow steps now include mandatory code formatting compliance.
+**Updated** All development workflow steps now include mandatory code formatting compliance and consideration for the new object-oriented type system.
 
 From concept to implementation:
 1. **Setup**: Ensure .clang-format is applied to all new and modified code
@@ -365,10 +407,11 @@ From concept to implementation:
 3. Update the lexer to recognize new tokens
 4. Add AST node types and update accept() implementations
 5. Implement visitor methods for new nodes
-6. Add or update tests to validate parsing and visitor behavior
-7. Run clang-format to ensure consistent formatting
-8. Build and run the executable in interactive or file mode
-9. Iterate on conflicts, diagnostics, and output formatting
+6. **Updated** Add or modify interpreter visit methods to handle new AST nodes with proper type system integration
+7. Add or update tests to validate parsing and evaluation behavior
+8. Run clang-format to ensure consistent formatting
+9. Build and run the executable in interactive or file mode
+10. Iterate on conflicts, diagnostics, and output formatting
 
 ### Code Formatting Requirements
 - Run `clang-format -i` on all modified files before committing
@@ -379,12 +422,14 @@ From concept to implementation:
 ### Validation Steps
 - Parse representative inputs and confirm AST structure
 - Use PrettyPrinter to verify textual output
+- **Updated** Test interpreter evaluation with new AST nodes and proper type handling
 - Run tests to ensure regressions are caught
 - Verify code formatting compliance
 
 References:
 - Grammar and lexer: [grammar.y:1-129](file://grammar.y#L1-L129), [lexer.l:1-100](file://lexer.l#L1-L100)
 - AST and visitor: [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203), [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
+- Interpreter and type system: [include/interpreter.hpp:1-43](file://include/interpreter.hpp#L1-L43), [include/value.hpp:1-249](file://include/value.hpp#L1-L249)
 - Tests: [tests/test_parser.cpp:1-52](file://tests/test_parser.cpp#L1-L52)
 - Formatting: [.clang-format:1-14](file://.clang-format#L1-L14)
 
@@ -393,6 +438,8 @@ References:
 - [lexer.l:1-100](file://lexer.l#L1-L100)
 - [include/ast.hpp:1-203](file://include/ast.hpp#L1-L203)
 - [include/ast_visitor.hpp:1-43](file://include/ast_visitor.hpp#L1-L43)
+- [include/interpreter.hpp:1-43](file://include/interpreter.hpp#L1-L43)
+- [include/value.hpp:1-249](file://include/value.hpp#L1-L249)
 - [tests/test_parser.cpp:1-52](file://tests/test_parser.cpp#L1-L52)
 - [.clang-format:1-14](file://.clang-format#L1-L14)
 
@@ -405,6 +452,7 @@ Step-by-step guides for common tasks:
 3. Set precedence/associativity: [grammar.y:58-67](file://grammar.y#L58-L67)
 4. Add production in expr rule: [grammar.y:102-123](file://grammar.y#L102-L123)
 5. Implement visitor method: [include/ast_visitor.hpp:21-40](file://include/ast_visitor.hpp#L21-L40), [src/pretty_printer.cpp:24-30](file://src/pretty_printer.cpp#L24-L30)
+6. **Updated** Add interpreter visit method for the new operator with proper type checking and evaluation logic
 
 ### Adding a Control Structure (e.g., while loop)
 1. Add keyword token: [lexer.l:53-61](file://lexer.l#L53-L61)
@@ -412,17 +460,20 @@ Step-by-step guides for common tasks:
 3. Add WhileStmt accept(): [src/ast.cpp:17-18](file://src/ast.cpp#L17-L18)
 4. Add WhileStmt visitor: [include/ast_visitor.hpp:35-40](file://include/ast_visitor.hpp#L35-L40), [src/pretty_printer.cpp:58-63](file://src/pretty_printer.cpp#L58-L63)
 5. Add grammar production: [grammar.y:79-96](file://grammar.y#L79-L96)
+6. **Updated** Add WhileStmt visit method in interpreter with proper evaluation logic
 
 ### Adding a Data Type (e.g., list literals)
 1. Add token(s) for brackets and separators: [lexer.l:80-88](file://lexer.l#L80-L88)
 2. Add ArrayExpr node: [include/ast.hpp:120-126](file://include/ast.hpp#L120-L126)
 3. Implement accept() and PrettyPrinter visit: [src/ast.cpp:13-14](file://src/ast.cpp#L13-L14), [src/pretty_printer.cpp:41-45](file://src/pretty_printer.cpp#L41-L45)
 4. Add grammar production: [grammar.y:106-106](file://grammar.y#L106-L106)
+5. **Updated** Modify interpreter ArrayExpr visit method to use new Value and Object system for proper type handling
 
 ### Adding a New Statement Form
 1. Extend Stmt hierarchy: [include/ast.hpp:43-48](file://include/ast.hpp#L43-L48)
 2. Implement accept() and PrettyPrinter visit
 3. Add grammar rule in stmt: [grammar.y:91-96](file://grammar.y#L91-L96)
+4. **Updated** Add visit method in interpreter for the new statement type
 
 ### Extending the AST Framework
 - Add new node types under existing hierarchies (Expr/Stmt).
@@ -491,20 +542,22 @@ References:
 
 ## Contributing Guidelines
 
-**Updated** Added formatting compliance requirements for all contributions.
+**Updated** Added formatting compliance requirements for all contributions and guidance for the new object-oriented type system.
 
 ### Code Quality Standards
 - **Formatting**: All code must comply with .clang-format configuration before submission
 - **Consistency**: Maintain consistent formatting across all source files
 - **Documentation**: Update documentation when adding new features
 - **Testing**: Add comprehensive tests for new functionality
+- **Type Safety**: Follow the new object-oriented type system patterns when implementing new features
 
 ### Development Process
 1. Fork the repository and create feature branches
 2. Implement changes with proper formatting
 3. Write or update tests as needed
 4. Verify formatting compliance with clang-format
-5. Submit pull request with clear description
+5. **Updated** Test new features with the interpreter and type system
+6. Submit pull request with clear description
 
 ### Formatting Compliance Checklist
 - [ ] All new and modified code formatted with clang-format
@@ -520,6 +573,7 @@ References:
 - Add tests for new features and edge cases
 - Document changes to grammar and visitor interfaces
 - Apply .clang-format to all contributed code
+- **Updated** Follow the new object-oriented design patterns when extending the type system or interpreter
 
 References:
 - Testing pattern: [tests/test_parser.cpp:12-25](file://tests/test_parser.cpp#L12-L25)
@@ -532,4 +586,4 @@ References:
 - [.clang-format:1-14](file://.clang-format#L1-L14)
 
 ## Conclusion
-This guide outlined how to extend the Modern Bison compiler for Monkey, covering grammar and lexer updates, AST node additions, visitor implementations, testing, debugging, and build integration. The addition of .clang-format ensures consistent code formatting across all contributions. By following the step-by-step procedures, formatting requirements, and best practices, contributors can safely introduce new language features while preserving clarity, educational value, and code quality.
+This guide outlined how to extend the Modern Bison compiler for Monkey, covering grammar and lexer updates, AST node additions, visitor implementations, interpreter evaluation, testing, debugging, and build integration. The transition to the modern object-oriented type system with StringObject and ArrayObject classes provides a robust foundation for extending the language with proper type safety and memory management. The addition of .clang-format ensures consistent code formatting across all contributions. By following the step-by-step procedures, formatting requirements, and best practices, contributors can safely introduce new language features while preserving clarity, educational value, and code quality.
