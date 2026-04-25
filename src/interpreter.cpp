@@ -185,6 +185,27 @@ void Interpreter::visit(ast::ArrayExpr& node) {
     result_ = Value(std::make_shared<ArrayObject>(std::move(elements), elementTypeId));
 }
 
+void Interpreter::visit(ast::ArrayDerefExpr& node) {
+    Value target = evaluate(*node.target);
+    Value index = evaluate(*node.index);
+
+    const auto* arr = target.as<ArrayObject>();
+    if (!arr) {
+        throw std::runtime_error("Cannot index non-array value");
+    }
+
+    if (!index.isInt()) {
+        throw std::runtime_error("Array index must be an integer");
+    }
+
+    int64_t idx = index.asInt();
+    if (idx < 0 || static_cast<size_t>(idx) >= arr->size()) {
+        throw std::runtime_error("Array index out of bounds");
+    }
+
+    result_ = arr->elements()[static_cast<size_t>(idx)];
+}
+
 void Interpreter::visit(ast::LetExpr& node) {
     Value val = evaluate(*node.value);
     ctx_->set(node.ident, val);

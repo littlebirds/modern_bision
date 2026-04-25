@@ -25,6 +25,9 @@ void BinOpExpr::accept(ASTVisitor& visitor) {
 void ArrayExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
+void ArrayDerefExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
 void LetExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
