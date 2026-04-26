@@ -336,3 +336,57 @@ TEST_CASE("Interpreter: empty array has deterministic unknown-element type", "[i
 TEST_CASE("Interpreter: mixed-type array throws", "[interpreter]") {
     REQUIRE_THROWS_AS(interpret("[1, 2.0];"), std::runtime_error);
 }
+
+// --- ArrayDerefExpr (array indexing) ---
+
+TEST_CASE("Interpreter: array index access", "[interpreter]") {
+    auto val = interpret("let arr = [10, 20, 30]; arr[0];");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: array index access last element", "[interpreter]") {
+    auto val = interpret("let arr = [10, 20, 30]; arr[2];");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 30);
+}
+
+TEST_CASE("Interpreter: array index with expression", "[interpreter]") {
+    auto val = interpret("let arr = [10, 20, 30]; let i = 1; arr[i + 1];");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 30);
+}
+
+TEST_CASE("Interpreter: array index via variable", "[interpreter]") {
+    auto val = interpret("let arr = [5, 6, 7]; let idx = 1; arr[idx];");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 6);
+}
+
+TEST_CASE("Interpreter: array index out of bounds throws", "[interpreter]") {
+    REQUIRE_THROWS_AS(interpret("let arr = [1, 2]; arr[5];"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: array negative index throws", "[interpreter]") {
+    REQUIRE_THROWS_AS(interpret("let arr = [1, 2]; arr[-1];"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: non-integer index throws", "[interpreter]") {
+    REQUIRE_THROWS_AS(interpret("let arr = [1, 2]; arr[1.5];"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: indexing non-array throws", "[interpreter]") {
+    REQUIRE_THROWS_AS(interpret("let x = 5; x[0];"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: chained array access", "[interpreter]") {
+    auto val = interpret("let inner = [1, 2]; let outer = [inner, [3, 4]]; outer[0][1];");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 2);
+}
+
+TEST_CASE("Interpreter: array index with let binding of result", "[interpreter]") {
+    auto val = interpret("let arr = [100, 200]; let v = arr[1]; v;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 200);
+}

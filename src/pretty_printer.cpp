@@ -48,6 +48,13 @@ void PrettyPrinter::visit(ArrayExpr& node) {
     output_ << "]";
 }
 
+void PrettyPrinter::visit(ArrayDerefExpr& node) {
+    node.target->accept(*this);
+    output_ << "[";
+    node.index->accept(*this);
+    output_ << "]";
+}
+
 void PrettyPrinter::visit(LetExpr& node) {
     output_ << "let " << node.ident << " = ";
     node.value->accept(*this);
