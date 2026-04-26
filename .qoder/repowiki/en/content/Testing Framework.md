@@ -26,7 +26,7 @@
 ## Update Summary
 **Changes Made**
 - Added comprehensive array dereference functionality with new ArrayDerefExpr AST node
-- Enhanced interpreter testing with 15 new test cases covering basic array dereference, expression indices, and chained array dereferences
+- Enhanced interpreter testing with 11 new test cases covering basic indexing, expression-based indexing, chained array access, and error handling scenarios
 - Updated parser testing with new test cases for array dereference syntax validation
 - Implemented proper error handling for array indexing operations including bounds checking and type validation
 - Added grammar precedence rules for array dereference operator with proper associativity
@@ -55,7 +55,7 @@ This document describes the unit testing framework for the Monkey language compi
 - **Enhanced**: Value system testing including primitive types, object references, and type checking
 - **Enhanced**: Context management and scope resolution validation
 - **Enhanced**: Type table functionality and type categorization
-- **Enhanced**: Array dereference functionality with comprehensive test coverage for basic indexing, expression indices, and chained dereferences
+- **Enhanced**: Array dereference functionality with comprehensive test coverage for basic indexing, expression indices, chained dereferences, and error handling scenarios
 - Test runner configuration, compilation setup, and continuous integration
 
 The framework now provides comprehensive testing coverage for both the parsing phase and the interpretation phase, enabling thorough validation of the complete language implementation with detailed debugging capabilities and robust error handling mechanisms.
@@ -268,7 +268,7 @@ The test runner executable is defined in tests/CMakeLists.txt and includes both 
 - **Identifier Resolution**: Variable reference resolution with context management and error handling for undefined variables
 - **String Operations**: String literal creation, equality comparisons, escape sequence handling, and truthiness evaluation
 - **Array Operations**: Array literal creation, type checking, element access, and mixed-type error handling
-- **Array Dereference Operations**: **New**: Comprehensive array indexing functionality including basic indexing, expression indices, and chained dereferences with proper error handling
+- **Array Dereference Operations**: **New**: Comprehensive array indexing functionality including basic indexing, expression indices, chained dereferences, and extensive error handling scenarios with proper validation
 - **Error Conditions**: Division by zero, modulo by zero, undefined variable access, type mismatch errors, and array indexing errors
 
 ```mermaid
@@ -597,7 +597,7 @@ The CI workflow installs dependencies (cmake, flex, bison), configures the build
 Common issues and resolutions with enhanced debugging capabilities:
 
 **Enhanced**: Parser fails to generate outputs:
-- Verify generated Parser.cpp/.hpp and Scanner.cpp/.hpp exist in the build directory.
+- Verify generated Parser.cpp/.hpp exist in the build directory.
 - Ensure CMake configured successfully and Flex/Bison were found.
 - **Enhanced**: Check debug output for parse result validation and AST existence indicators.
 

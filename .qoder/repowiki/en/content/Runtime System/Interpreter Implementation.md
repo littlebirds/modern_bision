@@ -21,11 +21,11 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive documentation for ArrayDerefExpr implementation
-- Updated AST node structure to include ArrayDerefExpr
-- Enhanced interpreter with runtime validation for array indexing
+- Enhanced interpreter implementation with comprehensive array dereference testing
+- Added extensive test coverage for array indexing functionality including boundary conditions
+- Implemented runtime validation for array access operations
 - Added grammar rules and precedence handling for array dereference operations
-- Expanded test coverage for array indexing functionality
+- Expanded error handling for invalid array operations
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -43,7 +43,7 @@ This document provides comprehensive technical documentation for the Monkey Prog
 
 The implementation follows a visitor pattern architecture where the AST serves as the central data structure, and specialized visitors handle different aspects of compilation and execution. The interpreter maintains a runtime context for variable scoping and evaluation, while the type system manages primitive and composite data types.
 
-**Updated** Added comprehensive array indexing support with runtime validation for type checking, bounds checking, and appropriate error handling.
+**Updated** Enhanced with comprehensive array dereference testing covering basic array access, boundary conditions, expression-based indexing, variable-based indexing, and error conditions validation.
 
 ## Project Structure
 The project follows a modular C++ architecture with clear separation between lexical analysis, parsing, AST construction, and interpretation phases.
@@ -117,7 +117,7 @@ Key responsibilities include:
 - Variable binding and lookup
 - Control flow statement processing
 - Array literal construction with type validation
-- **Array indexing with runtime validation**
+- **Array indexing with comprehensive runtime validation**
 
 ### Value System
 The `Value` class provides a type-safe container for all runtime values, supporting both primitive types and heap-allocated objects. It uses C++ variants for type safety and includes comprehensive type checking and conversion utilities.
@@ -135,7 +135,7 @@ The `Context` class implements a hierarchical variable scoping system using pare
 ### Type System
 The `TypeTable` provides centralized type management with support for primitive types, arrays, and composite types. It generates unique type identifiers and maintains metadata for type categorization and size information.
 
-**Updated** Enhanced array type system with proper element type validation and bounds checking.
+**Updated** Enhanced array type system with proper element type validation and comprehensive bounds checking.
 
 **Section sources**
 - [interpreter.hpp:12-44](file://include/interpreter.hpp#L12-L44)
@@ -494,7 +494,7 @@ IfStmt --> ElifList : "contains"
 **Diagram sources**
 - [ast.hpp:14-214](file://include/ast.hpp#L14-L214)
 
-**Updated** Added ArrayDerefExpr node to support array indexing operations with target and index expressions.
+**Updated** Added ArrayDerefExpr node to support array indexing operations with target and index expressions, enabling comprehensive array dereference testing.
 
 **Section sources**
 - [ast.hpp:14-214](file://include/ast.hpp#L14-L214)
@@ -539,7 +539,7 @@ Interp->>Ctx : "Restore parent context"
 - [interpreter.cpp:226-230](file://src/interpreter.cpp#L226-L230)
 
 ### ArrayDerefExpr Implementation
-The ArrayDerefExpr implementation provides comprehensive runtime validation for array indexing operations.
+The ArrayDerefExpr implementation provides comprehensive runtime validation for array indexing operations with extensive error handling.
 
 ```mermaid
 flowchart TD
@@ -563,10 +563,38 @@ ReturnElement --> ArrayDerefEnd([Success Returned])
 - [interpreter.cpp:188-207](file://src/interpreter.cpp#L188-L207)
 - [ast.hpp:130-140](file://include/ast.hpp#L130-L140)
 
-**Updated** Added comprehensive array indexing implementation with runtime validation including type checking, bounds checking, and appropriate error handling.
+**Updated** Enhanced with comprehensive array indexing implementation featuring runtime validation including type checking, bounds checking, and appropriate error handling for all edge cases.
 
 **Section sources**
 - [interpreter.cpp:188-207](file://src/interpreter.cpp#L188-L207)
+- [ast.hpp:130-140](file://include/ast.hpp#L130-L140)
+
+### Grammar and Parser Integration
+The grammar file defines comprehensive precedence rules and parsing behavior for array dereference operations.
+
+```mermaid
+flowchart TD
+GrammarStart([Grammar Rules]) --> Precedence["Define ARRAY_DEREF precedence"]
+Precedence --> Production["Add ArrayDerefExpr production"]
+Production --> ParseAction["Generate ArrayDerefExpr node"]
+ParseAction --> ASTNode["Create ArrayDerefExpr with target & index"]
+ASTNode --> Visitor["ASTVisitor accepts ArrayDerefExpr"]
+Visitor --> Interpreter["Interpreter processes array indexing"]
+Interpreter --> Validation["Validate array type and index bounds"]
+Validation --> Execution["Execute array dereference operation"]
+Execution --> Result["Return indexed element value"]
+```
+
+**Diagram sources**
+- [grammar.y:68](file://grammar.y#L68)
+- [grammar.y:108](file://grammar.y#L108)
+- [ast.hpp:130-140](file://include/ast.hpp#L130-L140)
+
+**Updated** Added comprehensive grammar integration for array dereference operations with proper precedence handling and AST node generation.
+
+**Section sources**
+- [grammar.y:68](file://grammar.y#L68)
+- [grammar.y:108](file://grammar.y#L108)
 - [ast.hpp:130-140](file://include/ast.hpp#L130-L140)
 
 ## Dependency Analysis
@@ -641,12 +669,12 @@ The interpreter implementation incorporates several performance optimizations an
 - Short-circuit evaluation for logical operators
 - Efficient array construction with pre-reserved capacity
 - Minimal object creation during evaluation
-- **Optimized array indexing with early validation**
+- **Optimized array indexing with early validation and bounds checking**
 
 ### Testing and Validation
 The comprehensive test suite validates performance characteristics and correctness across various scenarios, ensuring reliable operation under different usage patterns.
 
-**Updated** Added performance considerations for array indexing operations including early validation and bounds checking optimization.
+**Updated** Enhanced with performance considerations for array indexing operations including early validation, bounds checking optimization, and comprehensive error handling.
 
 ## Troubleshooting Guide
 Common issues and their solutions when working with the interpreter:
@@ -667,7 +695,7 @@ Common issues and their solutions when working with the interpreter:
 - Use pretty printing to visualize AST structure
 - Leverage test cases as behavioral specifications
 
-**Updated** Added troubleshooting guidance for array indexing errors including invalid array types, non-integer indices, and out-of-bounds access.
+**Updated** Enhanced troubleshooting guidance for array indexing errors including comprehensive validation of array types, non-integer indices, and out-of-bounds access scenarios.
 
 **Section sources**
 - [interpreter.cpp:45-49](file://src/interpreter.cpp#L45-L49)
@@ -684,8 +712,8 @@ Key strengths include:
 - Hierarchical context management for proper scoping
 - Extensive test coverage validating behavior across scenarios
 - Clean separation between parsing and execution phases
-- **Robust array indexing implementation with runtime validation**
+- **Robust array indexing implementation with comprehensive runtime validation and error handling**
 
 The implementation provides an excellent foundation for extending the language with additional features such as advanced array operations, function calls, and enhanced type checking capabilities as outlined in the project roadmap.
 
-**Updated** Enhanced conclusion to highlight the comprehensive array indexing implementation with runtime validation as a key feature of the interpreter.
+**Updated** Enhanced conclusion to highlight the comprehensive array indexing implementation with runtime validation and extensive error handling as a key feature of the interpreter, validated through comprehensive testing scenarios.
