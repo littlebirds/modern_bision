@@ -77,6 +77,27 @@ TEST_CASE("Test 6: let statement with string", "[parser]") {
     REQUIRE(result != "");
 }
 
+TEST_CASE("Test 7: array dereference a[0]", "[parser]") {
+    std::string input = "a[0];";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
+TEST_CASE("Test 8: array dereference with expression index", "[parser]") {
+    std::string input = "let x = arr[1 + 2];";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
+TEST_CASE("Test 9: chained array dereference", "[parser]") {
+    std::string input = "matrix[i][j];";
+    std::string result = parse(input);
+    std::cout << "Input: " << input << "\nResult: " << result << std::endl;
+    REQUIRE(result != "");
+}
+
 int main(int argc, char* argv[]) {
     Catch::Session session;
     return session.run(argc, argv);

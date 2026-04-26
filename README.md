@@ -38,3 +38,11 @@ cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Debug -S. -Bbuild
 cmake --build build
 build\monkey.exe
 ```
+
+## Next Steps
+
+The current runtime now supports homogeneous array literals with deterministic type ids derived from element type and array length. The next concrete steps are:
+
+1. Add array indexing and a length operation so arrays are usable beyond literal construction.
+2. Decide whether mixed numeric arrays such as `[1, 2.0]` should remain invalid or promote to a common element type like `float`.
+3. Expose array type metadata helpers for later semantic analysis and type-checking passes.

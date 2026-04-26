@@ -93,20 +93,12 @@ private:
     ValueType data_;
 };
 
-// Object types enum
-enum class ObjectType {
-    STRING,
-    LIST,
-    // Future: FUNCTION, MAP, CLASS_INSTANCE, etc.
-};
-
 // Base Object class for heap-allocated values
 class Object {
 public:
     virtual ~Object() = default;
 
     virtual TypeId getTypeId() const = 0;
-    virtual ObjectType type() const = 0;
     virtual std::string toString() const = 0;
     virtual bool equals(const Object& other) const = 0;
 
@@ -120,10 +112,9 @@ public:
     explicit StringObject(std::string value) : value_(std::move(value)) {}
 
     TypeId getTypeId() const override { return TYPE_STRING; }
-    ObjectType type() const override { return ObjectType::STRING; }
     std::string toString() const override { return value_; }
     bool equals(const Object& other) const override {
-        if (other.type() != ObjectType::STRING) {
+        if (other.getTypeId() != this->getTypeId()) {
             return false;
         }
         const auto& str_other = dynamic_cast<const StringObject&>(other);
@@ -134,7 +125,49 @@ public:
 
 private:
     std::string value_;
-}; 
+};
+
+// Array object for heap-allocated homogeneous arrays.
+class ArrayObject : public Object {
+public:
+    ArrayObject(std::vector<Value>&& elements, TypeId elementTypeId)
+        : elements_(std::move(elements)),
+          elementTypeId_(elementTypeId),
+          myTid_(TypeTable::instance().getArrayTypeId(elementTypeId, elements_.size())) 
+        {}
+
+    TypeId getTypeId() const override { return this->myTid_; }
+
+    std::string toString() const override {
+        std::ostringstream ss;
+        ss << "[";
+        for (size_t i = 0; i < elements_.size(); ++i) {
+            ss << elements_[i].toString();
+            if (i + 1 < elements_.size()) {
+                ss << ", ";
+            }
+        }
+        ss << "]";
+        return ss.str();
+    }
+
+    bool equals(const Object& other) const override {
+        if (other.getTypeId() != this->getTypeId()) {
+            return false;
+        }
+        const auto& array_other = dynamic_cast<const ArrayObject&>(other);
+        return elements_ == array_other.elements_;
+    }
+
+    const std::vector<Value>& elements() const { return elements_; }
+    size_t size() const { return elements_.size(); }
+    TypeId elementTypeId() const { return elementTypeId_; }
+
+private:
+    std::vector<Value> elements_;
+    TypeId elementTypeId_ = TYPE_UNKNOWN;
+    TypeId myTid_ = TYPE_UNKNOWN;
+};
 
 inline TypeId Value::typeId() const {
     if (isNull()) return TYPE_NULL;

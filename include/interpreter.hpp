@@ -23,6 +23,7 @@ public:
     void visit(ast::UnaryExpr& node) override;
     void visit(ast::BinOpExpr& node) override;
     void visit(ast::ArrayExpr& node) override;
+    void visit(ast::ArrayDerefExpr& node) override;
     void visit(ast::LetExpr& node) override;
     void visit(ast::ExprSeq& node) override;
     void visit(ast::ExprStmt& node) override;

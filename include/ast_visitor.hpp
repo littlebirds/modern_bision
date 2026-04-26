@@ -12,6 +12,7 @@ struct IdentExpr;
 struct UnaryExpr;
 struct BinOpExpr;
 struct ArrayExpr;
+struct ArrayDerefExpr;
 struct LetExpr;
 struct ExprSeq;
 struct ExprStmt;
@@ -31,6 +32,7 @@ struct ASTVisitor {
     virtual void visit(UnaryExpr& node) = 0;
     virtual void visit(BinOpExpr& node) = 0;
     virtual void visit(ArrayExpr& node) = 0;
+    virtual void visit(ArrayDerefExpr& node) = 0;
     virtual void visit(LetExpr& node) = 0;
     virtual void visit(ExprSeq& node) = 0;
 

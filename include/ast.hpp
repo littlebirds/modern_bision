@@ -127,6 +127,18 @@ struct ArrayExpr : public Expr {
     void accept(ASTVisitor& visitor) override;
 };
 
+struct ArrayDerefExpr : public Expr {
+    std::unique_ptr<Expr> target;
+    std::unique_ptr<Expr> index;
+
+    ArrayDerefExpr(const monkey::location& loc, Expr* target, Expr* index)
+        : Expr(loc), target(target), index(index) {}
+    ArrayDerefExpr(const monkey::location& loc, std::unique_ptr<Expr> target, std::unique_ptr<Expr> index)
+        : Expr(loc), target(std::move(target)), index(std::move(index)) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
 struct ExprStmt : public Stmt {
     std::unique_ptr<Expr> expression;
 

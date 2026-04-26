@@ -65,6 +65,7 @@
 %precedence           UMINUS
 %precedence           FACTORIAL
 %right                EXPONENT
+%precedence           ARRAY_DEREF
 
 %start program
 
@@ -103,7 +104,8 @@ expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@
         | LIT_FLOAT                                 { $$ = new ast::FloatLitExpr(@$, $1); }
         | LIT_STR                                   { $$ = new ast::StringLitExpr(@$, $1); }
         | MINUS expr %prec UMINUS                   { $$ = new ast::UnaryExpr(@$, $2, "-"); }
-        | LBRACKET expr_seq RBRACKET                { $$ = new ast::ArrayExpr(@$, $2);}    
+        | LBRACKET expr_seq RBRACKET                { $$ = new ast::ArrayExpr(@$, $2);}
+        | expr LBRACKET expr RBRACKET %prec ARRAY_DEREF { $$ = new ast::ArrayDerefExpr(@$, $1, $3); }
         | expr AND expr                             { $$ = new ast::BinOpExpr(@$, $1, $3, "and"); }
         | expr OR expr                              { $$ = new ast::BinOpExpr(@$, $1, $3, "or"); }   
         | expr GT expr                              { $$ = new ast::BinOpExpr(@$, $1, $3,  ">"); }

@@ -22,6 +22,7 @@ public:
     void visit(UnaryExpr& node) override;
     void visit(BinOpExpr& node) override;
     void visit(ArrayExpr& node) override;
+    void visit(ArrayDerefExpr& node) override;
     void visit(LetExpr& node) override;
     void visit(ExprSeq& node) override;
 
