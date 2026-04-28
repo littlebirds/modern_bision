@@ -46,6 +46,15 @@ void IfStmt::accept(ASTVisitor& visitor) {
 void StmtList::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
+void FnLitExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+void CallExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+void ReturnStmt::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
 
 void IfStmt::setIndentationLvl(int adjustment) {
     truthy_branch->setIndentationLvl(adjustment);

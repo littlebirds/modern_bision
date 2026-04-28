@@ -31,6 +31,11 @@ public:
     void visit(BlockStmt& node) override;
     void visit(IfStmt& node) override;
     void visit(StmtList& node) override;
+    void visit(ReturnStmt& node) override;
+
+    // Function visitors
+    void visit(FnLitExpr& node) override;
+    void visit(CallExpr& node) override;
 
 private:
     std::ostringstream output_;

@@ -103,4 +103,33 @@ void PrettyPrinter::visit(IfStmt& node) {
     }
 }
 
+void PrettyPrinter::visit(FnLitExpr& node) {
+    output_ << "fn(";
+    for (size_t i = 0; i < node.params.size(); ++i) {
+        if (i > 0) output_ << ", ";
+        output_ << node.params[i].first << " " << node.params[i].second;
+    }
+    output_ << ")";
+    if (node.returnType) {
+        output_ << " " << *node.returnType;
+    }
+    output_ << " ";
+    node.body->accept(*this);
+}
+
+void PrettyPrinter::visit(CallExpr& node) {
+    node.callee->accept(*this);
+    output_ << "(";
+    if (node.arguments) {
+        node.arguments->accept(*this);
+    }
+    output_ << ")";
+}
+
+void PrettyPrinter::visit(ReturnStmt& node) {
+    output_ << "return ";
+    node.value->accept(*this);
+    output_ << ";";
+}
+
 } // namespace ast

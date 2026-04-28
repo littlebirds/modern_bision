@@ -6,12 +6,20 @@
 #include "value.hpp"
 #include <memory>
 #include <string>
+#include <stdexcept>
 
 namespace eval {
 
+struct ReturnException : public std::exception {
+    Value value;
+    explicit ReturnException(Value val) : value(std::move(val)) {}
+};
+
 class Interpreter : public ast::ASTVisitor {
 public:
-    Interpreter() : ctx_(std::make_shared<Context>()) {}
+    Interpreter()
+        : ctx_(std::make_shared<Context>()),
+          global_ctx_(ctx_) {}
     ~Interpreter() override = default;
 
     Value result() const { return result_; }
@@ -30,10 +38,14 @@ public:
     void visit(ast::BlockStmt& node) override;
     void visit(ast::IfStmt& node) override;
     void visit(ast::StmtList& node) override;
+    void visit(ast::FnLitExpr& node) override;
+    void visit(ast::CallExpr& node) override;
+    void visit(ast::ReturnStmt& node) override;
 
 private:
     Value result_;
     std::shared_ptr<Context> ctx_;
+    std::shared_ptr<Context> global_ctx_;
 
     Value evaluate(ast::Expr& expr);
     Value applyArithmetic(const Value& lhs, const Value& rhs, std::string_view op);

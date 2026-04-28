@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 #include <optional>
+#include <utility>
 #include "location.hh"
 
 namespace ast {
@@ -207,6 +208,51 @@ struct IfStmt : public Stmt {
           optElse(std::move(optElse)) {}
 
     void setIndentationLvl(int adjustment) override;
+    void accept(ASTVisitor& visitor) override;
+};
+
+struct FnLitExpr : public Expr {
+    std::vector<std::pair<std::string, std::string>> params; // (name, type_name) pairs
+    std::optional<std::string> returnType; // nullopt if omitted (inferred)
+    std::unique_ptr<BlockStmt> body;
+
+    FnLitExpr(const monkey::location& loc,
+              std::vector<std::pair<std::string, std::string>>* params,
+              std::optional<std::string> returnType,
+              BlockStmt* body)
+        : Expr(loc), params(std::move(*params)),
+          returnType(std::move(returnType)), body(body) { delete params; }
+
+    FnLitExpr(const monkey::location& loc,
+              std::vector<std::pair<std::string, std::string>> params,
+              std::optional<std::string> returnType,
+              std::unique_ptr<BlockStmt> body)
+        : Expr(loc), params(std::move(params)),
+          returnType(std::move(returnType)), body(std::move(body)) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
+struct CallExpr : public Expr {
+    std::unique_ptr<Expr> callee;
+    std::unique_ptr<ExprSeq> arguments;
+
+    CallExpr(const monkey::location& loc, Expr* callee, ExprSeq* arguments)
+        : Expr(loc), callee(callee), arguments(arguments) {}
+    CallExpr(const monkey::location& loc, std::unique_ptr<Expr> callee, std::unique_ptr<ExprSeq> arguments)
+        : Expr(loc), callee(std::move(callee)), arguments(std::move(arguments)) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
+struct ReturnStmt : public Stmt {
+    std::unique_ptr<Expr> value;
+
+    ReturnStmt(const monkey::location& loc, Expr* value)
+        : Stmt(loc), value(value) {}
+    ReturnStmt(const monkey::location& loc, std::unique_ptr<Expr> value)
+        : Stmt(loc), value(std::move(value)) {}
+
     void accept(ASTVisitor& visitor) override;
 };
 

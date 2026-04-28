@@ -59,6 +59,10 @@ identifier      ([[:alpha:]][[:alnum:]_]*)
 "elif"          { return Parser::token::ELIF; }
 "true"          { return Parser::token::TRUE; }
 "false"         { return Parser::token::FALSE; }
+"int"           { return Parser::token::KW_INT; }
+"float"         { return Parser::token::KW_FLOAT; }
+"string"        { return Parser::token::KW_STRING; }
+"bool"          { return Parser::token::KW_BOOL; }
 "and"           { return Parser::token::AND; }
 "or"            { return Parser::token::OR; }
 "not"           { return Parser::token::NOT; }

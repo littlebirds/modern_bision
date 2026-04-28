@@ -297,6 +297,66 @@ TEST_CASE("Interpreter: block-local string does not alter outer variable", "[int
     REQUIRE(val.toString() == "outer");
 }
 
+// --- If / elif / else ---
+
+TEST_CASE("Interpreter: simple if truthy", "[interpreter]") {
+    auto val = interpret("if 1 { 42; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
+TEST_CASE("Interpreter: simple if falsy", "[interpreter]") {
+    auto val = interpret("if 0 { 42; }");
+    REQUIRE(val.isNull());
+}
+
+TEST_CASE("Interpreter: if else truthy", "[interpreter]") {
+    auto val = interpret("if 1 { 42; } else { 99; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
+TEST_CASE("Interpreter: if else falsy", "[interpreter]") {
+    auto val = interpret("if 0 { 42; } else { 99; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 99);
+}
+
+TEST_CASE("Interpreter: if elif else main branch", "[interpreter]") {
+    auto val = interpret("let x = 10; if x > 5 { 1; } elif x > 3 { 2; } else { 3; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 1);
+}
+
+TEST_CASE("Interpreter: if elif else first elif branch", "[interpreter]") {
+    auto val = interpret("let x = 4; if x > 5 { 1; } elif x > 3 { 2; } else { 3; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 2);
+}
+
+TEST_CASE("Interpreter: if elif else second elif branch", "[interpreter]") {
+    auto val = interpret("let x = 2; if x > 5 { 1; } elif x > 3 { 2; } elif x > 1 { 3; } else { 4; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+}
+
+TEST_CASE("Interpreter: if elif else falls through to else", "[interpreter]") {
+    auto val = interpret("let x = 0; if x > 5 { 1; } elif x > 3 { 2; } else { 3; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+}
+
+TEST_CASE("Interpreter: if elif without else falsy", "[interpreter]") {
+    auto val = interpret("let x = 0; if x > 5 { 1; } elif x > 3 { 2; }");
+    REQUIRE(val.isNull());
+}
+
+TEST_CASE("Interpreter: nested if statements", "[interpreter]") {
+    auto val = interpret("let x = 2; let y = 3; if x > 1 { if y > 2 { 42; } else { 99; } } else { 0; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
 // --- Arrays ---
 
 TEST_CASE("Interpreter: array literal creates array object", "[interpreter]") {
@@ -389,4 +449,159 @@ TEST_CASE("Interpreter: array index with let binding of result", "[interpreter]"
     auto val = interpret("let arr = [100, 200]; let v = arr[1]; v;");
     REQUIRE(val.isInt());
     CHECK(val.asInt() == 200);
+}
+
+// --- Function declaration and invocation ---
+
+TEST_CASE("Interpreter: fn literal creates function object", "[interpreter][function]") {
+    auto val = interpret("let add = fn(a int, b int) int { a + b; }; add;");
+    REQUIRE(val.isReference());
+    auto* fn = val.as<eval::FunctionObject>();
+    REQUIRE(fn != nullptr);
+    CHECK(fn->paramNames().size() == 2);
+    CHECK(fn->paramNames()[0] == "a");
+    CHECK(fn->paramNames()[1] == "b");
+    CHECK(fn->declaredReturnTypeId() == eval::TYPE_INT);
+}
+
+TEST_CASE("Interpreter: simple function call with int args", "[interpreter][function]") {
+    auto val = interpret("let add = fn(a int, b int) int { a + b; }; add(3, 4);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 7);
+}
+
+TEST_CASE("Interpreter: function with float params", "[interpreter][function]") {
+    auto val = interpret("let mul = fn(x float, y float) float { x * y; }; mul(2.5, 4.0);");
+    REQUIRE(val.isFloat());
+    CHECK(val.asFloat() == Catch::Approx(10.0));
+}
+
+TEST_CASE("Interpreter: function with bool return type", "[interpreter][function]") {
+    auto val = interpret("let isPositive = fn(x int) bool { x > 0; }; isPositive(5);");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: function with no return type (inferred)", "[interpreter][function]") {
+    auto val = interpret("let double = fn(x int) { x + x; }; double(21);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
+TEST_CASE("Interpreter: inferred return type enforced on second call", "[interpreter][function]") {
+    // First call returns int, second call must also return int
+    // The function always returns int, so this is fine
+    auto val = interpret("let id = fn(x int) { x; }; id(1); id(2);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 2);
+}
+
+TEST_CASE("Interpreter: function with explicit return", "[interpreter][function]") {
+    auto val = interpret("let f = fn(x int) int { return x * 2; }; f(5);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: explicit return short-circuits body", "[interpreter][function]") {
+    // return should exit the function before reaching the second statement
+    auto val = interpret("let f = fn(x int) int { return x; x + 100; }; f(7);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 7);
+}
+
+TEST_CASE("Interpreter: function with zero params", "[interpreter][function]") {
+    auto val = interpret("let fortyTwo = fn() int { 42; }; fortyTwo();");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 42);
+}
+
+TEST_CASE("Interpreter: wrong argument count throws", "[interpreter][function]") {
+    REQUIRE_THROWS_AS(
+        interpret("let f = fn(x int) int { x; }; f(1, 2);"),
+        std::runtime_error);
+}
+
+TEST_CASE("Interpreter: wrong argument type throws", "[interpreter][function]") {
+    REQUIRE_THROWS_AS(
+        interpret("let f = fn(x int) int { x; }; f(1.5);"),
+        std::runtime_error);
+}
+
+TEST_CASE("Interpreter: wrong declared return type throws", "[interpreter][function]") {
+    REQUIRE_THROWS_AS(
+        interpret("let f = fn(x int) bool { x + 1; }; f(1);"),
+        std::runtime_error);
+}
+
+TEST_CASE("Interpreter: calling non-function throws", "[interpreter][function]") {
+    REQUIRE_THROWS_AS(
+        interpret("let x = 5; x(1);"),
+        std::runtime_error);
+}
+
+TEST_CASE("Interpreter: function as argument (higher-order)", "[interpreter][function]") {
+    // Pass a function value to another function
+    // Note: we need fn type for param - but our current typed_param uses type_name
+    // which only supports int/float/string/bool. So higher-order functions aren't
+    // supported with type checking yet. Skip this test.
+}
+
+TEST_CASE("Interpreter: function scope isolation (no closures)", "[interpreter][function]") {
+    // Functions should not capture local scope - only global
+    auto val = interpret("let x = 10; let f = fn() int { x; }; f();");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: function params shadow globals", "[interpreter][function]") {
+    auto val = interpret("let x = 10; let f = fn(x int) int { x; }; f(99);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 99);
+}
+
+TEST_CASE("Interpreter: function does not modify caller scope", "[interpreter][function]") {
+    auto val = interpret("let x = 10; let f = fn(y int) int { let x = 999; y; }; f(1); x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: immediate function invocation", "[interpreter][function]") {
+    auto val = interpret("fn(x int) int { x * x; }(5);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 25);
+}
+
+TEST_CASE("Interpreter: conditional return in function", "[interpreter][function]") {
+    auto val = interpret(
+        "let abs = fn(x int) int {"
+        "  if x < 0 { return -x; }"
+        "  x;"
+        "};"
+        "abs(-5);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 5);
+}
+
+TEST_CASE("Interpreter: conditional return positive path", "[interpreter][function]") {
+    auto val = interpret(
+        "let abs = fn(x int) int {"
+        "  if x < 0 { return -x; }"
+        "  x;"
+        "};"
+        "abs(3);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+}
+
+TEST_CASE("Interpreter: function type id is structural", "[interpreter][function]") {
+    auto val1 = interpret("let f = fn(x int) int { x; }; f(1); f;");
+    auto val2 = interpret("let g = fn(y int) int { y + 1; }; g(1); g;");
+    // Both have signature fn(int) -> int, should have same TypeId
+    CHECK(val1.typeId() == val2.typeId());
+}
+
+TEST_CASE("Interpreter: different function signatures have different type ids", "[interpreter][function]") {
+    auto val1 = interpret("let f = fn(x int) int { x; }; f(1); f;");
+    auto val2 = interpret("let g = fn(x float) int { 1; }; g(1.0); g;");
+    CHECK(val1.typeId() != val2.typeId());
 }

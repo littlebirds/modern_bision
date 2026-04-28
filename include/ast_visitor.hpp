@@ -19,6 +19,9 @@ struct ExprStmt;
 struct BlockStmt;
 struct IfStmt;
 struct StmtList;
+struct FnLitExpr;
+struct CallExpr;
+struct ReturnStmt;
 
 struct ASTVisitor {
     ASTVisitor() = default;
@@ -35,12 +38,15 @@ struct ASTVisitor {
     virtual void visit(ArrayDerefExpr& node) = 0;
     virtual void visit(LetExpr& node) = 0;
     virtual void visit(ExprSeq& node) = 0;
+    virtual void visit(FnLitExpr& node) = 0;
+    virtual void visit(CallExpr& node) = 0;
 
     // Statements
     virtual void visit(ExprStmt& node) = 0;
     virtual void visit(BlockStmt& node) = 0;
     virtual void visit(IfStmt& node) = 0;
     virtual void visit(StmtList& node) = 0;
+    virtual void visit(ReturnStmt& node) = 0;
 };
 
 } // namespace ast

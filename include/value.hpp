@@ -10,6 +10,8 @@
 
 #include "type_table.hpp"
 
+namespace ast { struct BlockStmt; }
+
 namespace eval { 
 
 // Primitive types
@@ -167,6 +169,59 @@ private:
     std::vector<Value> elements_;
     TypeId elementTypeId_ = TYPE_UNKNOWN;
     TypeId myTid_ = TYPE_UNKNOWN;
+};
+
+// Function object for heap-allocated closures/function values
+class FunctionObject : public Object {
+public:
+    FunctionObject(std::vector<std::string> paramNames,
+                   std::vector<TypeId> paramTypeIds,
+                   TypeId declaredReturnTypeId,
+                   ast::BlockStmt* body)
+        : paramNames_(std::move(paramNames)),
+          paramTypeIds_(std::move(paramTypeIds)),
+          declaredReturnTypeId_(declaredReturnTypeId),
+          inferredReturnTypeId_(TYPE_UNKNOWN),
+          body_(body) {}
+
+    TypeId getTypeId() const override {
+        TypeId retTid = (declaredReturnTypeId_ != TYPE_UNKNOWN)
+            ? declaredReturnTypeId_ : inferredReturnTypeId_;
+        return TypeTable::instance().getFunctionTypeId(paramTypeIds_, retTid);
+    }
+
+    std::string toString() const override {
+        std::ostringstream ss;
+        ss << "fn(";
+        for (size_t i = 0; i < paramNames_.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << paramNames_[i] << " " << TypeTable::instance().getTypeName(paramTypeIds_[i]);
+        }
+        ss << ")";
+        TypeId retTid = (declaredReturnTypeId_ != TYPE_UNKNOWN)
+            ? declaredReturnTypeId_ : inferredReturnTypeId_;
+        if (retTid != TYPE_UNKNOWN) {
+            ss << " " << TypeTable::instance().getTypeName(retTid);
+        }
+        ss << " { ... }";
+        return ss.str();
+    }
+
+    bool equals(const Object& other) const override { return false; }
+
+    const std::vector<std::string>& paramNames() const { return paramNames_; }
+    const std::vector<TypeId>& paramTypeIds() const { return paramTypeIds_; }
+    TypeId declaredReturnTypeId() const { return declaredReturnTypeId_; }
+    TypeId inferredReturnTypeId() const { return inferredReturnTypeId_; }
+    void setInferredReturnTypeId(TypeId tid) { inferredReturnTypeId_ = tid; }
+    ast::BlockStmt* body() const { return body_; }
+
+private:
+    std::vector<std::string> paramNames_;
+    std::vector<TypeId> paramTypeIds_;
+    TypeId declaredReturnTypeId_;
+    TypeId inferredReturnTypeId_;
+    ast::BlockStmt* body_;
 };
 
 inline TypeId Value::typeId() const {

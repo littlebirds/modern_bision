@@ -42,6 +42,7 @@
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
 %token                          LET FUNCTION FOR RETURN IF ELSE ELIF
 %token                          TRUE FALSE
+%token                          KW_INT KW_FLOAT KW_STRING KW_BOOL
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
 %token <std::string>            Ident
 
@@ -53,6 +54,10 @@
 %nterm <ast::ElifList*>                         elif_list
 %nterm <std::optional<ast::BlockStmt*>>        opt_else
 %nterm <ast::IfStmt*>                           if_stmt
+%nterm <std::string>                            type_name
+%nterm <std::pair<std::string, std::string>>    typed_param
+%nterm <std::vector<std::pair<std::string, std::string>>*>  typed_param_list
+%nterm <std::optional<std::string>>             opt_return_type
 %nterm                                                          program
 
 %nonassoc             ASSIGN
@@ -65,7 +70,7 @@
 %precedence           UMINUS
 %precedence           FACTORIAL
 %right                EXPONENT
-%precedence           ARRAY_DEREF
+%precedence           ARRAY_DEREF CALL
 
 %start program
 
@@ -89,10 +94,29 @@ opt_else: %empty                                    { $$ = std::nullopt; }
         | ELSE block_stmt                           { $$ = std::make_optional($2); }
         ;
 
+type_name : KW_INT                                  { $$ = "int"; }
+        | KW_FLOAT                                  { $$ = "float"; }
+        | KW_STRING                                 { $$ = "string"; }
+        | KW_BOOL                                   { $$ = "bool"; }
+        ;
+
+typed_param : Ident type_name                       { $$ = std::make_pair($1, $2); }
+        ;
+
+typed_param_list : %empty                           { $$ = new std::vector<std::pair<std::string, std::string>>(); }
+        | typed_param                               { $$ = new std::vector<std::pair<std::string, std::string>>(); $$->push_back($1); }
+        | typed_param_list COMMA typed_param        { $1->push_back($3); $$ = $1; }
+        ;
+
+opt_return_type : %empty                            { $$ = std::nullopt; }
+        | type_name                                 { $$ = std::make_optional($1); }
+        ;
+
 stmt    : EOL                                       { ; }
         | expr SEMICOLON                            { $$ = new ast::ExprStmt(@$, $1); }        
         | block_stmt                                { $$ = $1; }
         | if_stmt                                   { $$ = $1; }
+        | RETURN expr SEMICOLON                     { $$ = new ast::ReturnStmt(@$, $2); }
         | error EOL                                 { yyerrok; }
         ;       
 
@@ -123,6 +147,8 @@ expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@
         | LET Ident ASSIGN expr                     { $$ = new ast::LetExpr(@$, $2, $4); }  
         | Ident                                     { $$ = new ast::IdentExpr(@$, $1); }
         | LPAREN expr RPAREN                        { $$ = $2; }
+        | FUNCTION LPAREN typed_param_list RPAREN opt_return_type block_stmt { $$ = new ast::FnLitExpr(@$, $3, $5, $6); }
+        | expr LPAREN expr_seq RPAREN %prec CALL    { $$ = new ast::CallExpr(@$, $1, $3); }
         ;
  
 %%

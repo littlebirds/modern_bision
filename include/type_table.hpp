@@ -63,6 +63,15 @@ struct ArrayType {
     {}
 };
 
+struct FunctionType {
+    std::vector<TypeId> param_tids;
+    TypeId return_tid;
+
+    FunctionType() : return_tid(TYPE_UNKNOWN) {}
+    FunctionType(std::vector<TypeId> paramTids, TypeId returnTid)
+        : param_tids(std::move(paramTids)), return_tid(returnTid) {}
+};
+
 // Type table - singleton for type registration and lookup
 class TypeTable {
 public:
@@ -81,6 +90,9 @@ public:
         if (this->arrayTypes_.count(tid) > 0) {
             return TypeCategory::ARRAY;
         }
+        if (this->functionTypes_.count(tid) > 0) {
+            return TypeCategory::FUNCTION;
+        }
         throw std::runtime_error("Type category not implemented yet nor tid does not exist");
     }
 
@@ -95,6 +107,17 @@ public:
         return newId;
     }
 
+    TypeId getFunctionTypeId(const std::vector<TypeId>& paramTids, TypeId returnTid) {
+        for (const auto& [key, val] : functionTypes_) {
+            if (val.param_tids == paramTids && val.return_tid == returnTid) {
+                return key;
+            }
+        }
+        TypeId newId = nextTypeId_++;
+        functionTypes_[newId] = FunctionType(paramTids, returnTid);
+        return newId;
+    }
+
     std::string getTypeName(TypeId tid) const {
         if (tid < basicTypes_.size()) {
             return basicTypes_[tid].name;
@@ -103,7 +126,25 @@ public:
             const auto& arrayType = arrayTypes_.at(tid);
             return getTypeName(arrayType.element_tid) + "[" + std::to_string(arrayType.length) + "]";
         }
+        if (functionTypes_.count(tid) > 0) {
+            const auto& ft = functionTypes_.at(tid);
+            std::string result = "fn(";
+            for (size_t i = 0; i < ft.param_tids.size(); ++i) {
+                if (i > 0) result += ", ";
+                result += getTypeName(ft.param_tids[i]);
+            }
+            result += ") -> " + getTypeName(ft.return_tid);
+            return result;
+        }
         return "unknown";
+    }
+
+    static TypeId resolveTypeName(const std::string& name) {
+        if (name == "int") return TYPE_INT;
+        if (name == "float") return TYPE_FLOAT;
+        if (name == "string") return TYPE_STRING;
+        if (name == "bool") return TYPE_BOOL;
+        throw std::runtime_error("Unknown type: " + name);
     }
 
     // Prevent copying
@@ -128,6 +169,7 @@ private:
 
     std::array<BuiltinType, 16> basicTypes_;
     std::unordered_map<TypeId, ArrayType> arrayTypes_;
+    std::unordered_map<TypeId, FunctionType> functionTypes_;
      
     std::atomic<TypeId> nextTypeId_;
 };

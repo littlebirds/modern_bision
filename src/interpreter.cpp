@@ -261,4 +261,120 @@ void Interpreter::visit(ast::IfStmt& node) {
     result_ = Value();
 }
 
+// --- Functions ---
+
+void Interpreter::visit(ast::FnLitExpr& node) {
+    std::vector<std::string> paramNames;
+    std::vector<TypeId> paramTypeIds;
+    paramNames.reserve(node.params.size());
+    paramTypeIds.reserve(node.params.size());
+
+    for (const auto& [name, typeName] : node.params) {
+        paramNames.push_back(name);
+        paramTypeIds.push_back(TypeTable::resolveTypeName(typeName));
+    }
+
+    TypeId declaredRetTid = TYPE_UNKNOWN;
+    if (node.returnType) {
+        declaredRetTid = TypeTable::resolveTypeName(*node.returnType);
+    }
+
+    auto fnObj = std::make_shared<FunctionObject>(
+        std::move(paramNames), std::move(paramTypeIds),
+        declaredRetTid, node.body.get());
+    result_ = Value(std::move(fnObj));
+}
+
+void Interpreter::visit(ast::ReturnStmt& node) {
+    Value val = evaluate(*node.value);
+    throw ReturnException(std::move(val));
+}
+
+void Interpreter::visit(ast::CallExpr& node) {
+    Value calleeVal = evaluate(*node.callee);
+
+    auto* fnObj = const_cast<FunctionObject*>(calleeVal.as<FunctionObject>());
+    if (!fnObj) {
+        throw std::runtime_error("Cannot call non-function value");
+    }
+
+    // Evaluate arguments
+    std::vector<Value> args;
+    if (node.arguments) {
+        args.reserve(node.arguments->exprs.size());
+        for (auto& argExpr : node.arguments->exprs) {
+            args.push_back(evaluate(*argExpr));
+        }
+    }
+
+    // Check arity
+    if (args.size() != fnObj->paramNames().size()) {
+        throw std::runtime_error(
+            "Function expects " + std::to_string(fnObj->paramNames().size()) +
+            " arguments but got " + std::to_string(args.size()));
+    }
+
+    // Check argument types
+    for (size_t i = 0; i < args.size(); ++i) {
+        TypeId argTid = args[i].typeId();
+        TypeId expectedTid = fnObj->paramTypeIds()[i];
+        if (argTid != expectedTid) {
+            throw std::runtime_error(
+                "Argument " + std::to_string(i) + " (" + fnObj->paramNames()[i] +
+                ") expected type " + TypeTable::instance().getTypeName(expectedTid) +
+                " but got " + TypeTable::instance().getTypeName(argTid));
+        }
+    }
+
+    // Create new scope: parent is global scope (no closures)
+    auto fnCtx = std::make_shared<Context>(global_ctx_);
+    for (size_t i = 0; i < args.size(); ++i) {
+        fnCtx->set(fnObj->paramNames()[i], args[i]);
+    }
+
+    // Save and swap context
+    auto savedCtx = ctx_;
+    ctx_ = fnCtx;
+
+    // Execute body, catching ReturnException
+    Value returnVal;
+    try {
+        fnObj->body()->accept(*this);
+        // Implicit return: result_ holds the last evaluated value
+        returnVal = result_;
+    } catch (const ReturnException& ret) {
+        returnVal = ret.value;
+    }
+
+    // Restore context
+    ctx_ = savedCtx;
+
+    // Validate return type
+    TypeId retTid = returnVal.typeId();
+    TypeId declaredRetTid = fnObj->declaredReturnTypeId();
+
+    if (declaredRetTid != TYPE_UNKNOWN) {
+        // Declared return type: validate
+        if (retTid != declaredRetTid) {
+            throw std::runtime_error(
+                "Function declared return type " +
+                TypeTable::instance().getTypeName(declaredRetTid) +
+                " but returned " + TypeTable::instance().getTypeName(retTid));
+        }
+    } else {
+        // Inferred return type: set on first call, validate on subsequent
+        TypeId inferredTid = fnObj->inferredReturnTypeId();
+        if (inferredTid == TYPE_UNKNOWN) {
+            fnObj->setInferredReturnTypeId(retTid);
+        } else if (retTid != inferredTid) {
+            throw std::runtime_error(
+                "Function return type inferred as " +
+                TypeTable::instance().getTypeName(inferredTid) +
+                " but returned " + TypeTable::instance().getTypeName(retTid));
+        }
+    }
+
+    result_ = returnVal;
+}
+
 } // namespace eval
