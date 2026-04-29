@@ -17,6 +17,7 @@ public:
     // Expression visitors
     void visit(IntLitExpr& node) override;
     void visit(FloatLitExpr& node) override;
+    void visit(BoolLitExpr& node) override;
     void visit(StringLitExpr& node) override;
     void visit(IdentExpr& node) override;
     void visit(UnaryExpr& node) override;
@@ -24,12 +25,14 @@ public:
     void visit(ArrayExpr& node) override;
     void visit(ArrayDerefExpr& node) override;
     void visit(LetExpr& node) override;
+    void visit(AssignExpr& node) override;
     void visit(ExprSeq& node) override;
 
     // Statement visitors
     void visit(ExprStmt& node) override;
     void visit(BlockStmt& node) override;
     void visit(IfStmt& node) override;
+    void visit(WhileStmt& node) override;
     void visit(StmtList& node) override;
     void visit(ReturnStmt& node) override;
 

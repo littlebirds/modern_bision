@@ -40,7 +40,7 @@
  
 %token <int>                    LBRACE 
 %token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
-%token                          LET FUNCTION FOR RETURN IF ELSE ELIF
+%token                          LET FUNCTION FOR WHILE RETURN IF ELSE ELIF
 %token                          TRUE FALSE
 %token                          KW_INT KW_FLOAT KW_STRING KW_BOOL
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
@@ -54,6 +54,7 @@
 %nterm <ast::ElifList*>                         elif_list
 %nterm <std::optional<ast::BlockStmt*>>        opt_else
 %nterm <ast::IfStmt*>                           if_stmt
+%nterm <ast::WhileStmt*>                        while_stmt
 %nterm <std::string>                            type_name
 %nterm <std::pair<std::string, std::string>>    typed_param
 %nterm <std::vector<std::pair<std::string, std::string>>*>  typed_param_list
@@ -114,11 +115,19 @@ opt_return_type : %empty                            { $$ = std::nullopt; }
 
 stmt    : EOL                                       { ; }
         | expr SEMICOLON                            { $$ = new ast::ExprStmt(@$, $1); }        
+        | Ident ASSIGN expr SEMICOLON               { $$ = new ast::ExprStmt(@$, new ast::AssignExpr(@$, $1, $3)); }
         | block_stmt                                { $$ = $1; }
         | if_stmt                                   { $$ = $1; }
+        | while_stmt                                { $$ = $1; }
         | RETURN expr SEMICOLON                     { $$ = new ast::ReturnStmt(@$, $2); }
         | error EOL                                 { yyerrok; }
-        ;       
+        ;
+
+// TODO: for loop: for Ident in expr block_stmt (requires iterator/range support)
+// TODO: break / continue statements inside while loops
+
+while_stmt : WHILE expr block_stmt               { $$ = new ast::WhileStmt(@$, $2, $3); }
+           ;
 
 expr_seq : %empty                                   { $$ = new ast::ExprSeq(); }    
         | expr                                      { $$ = new ast::ExprSeq(); $$->append($1); }      
@@ -127,7 +136,10 @@ expr_seq : %empty                                   { $$ = new ast::ExprSeq(); }
 expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@$, $1);}
         | LIT_FLOAT                                 { $$ = new ast::FloatLitExpr(@$, $1); }
         | LIT_STR                                   { $$ = new ast::StringLitExpr(@$, $1); }
+        | TRUE                                      { $$ = new ast::BoolLitExpr(@$, true); }
+        | FALSE                                     { $$ = new ast::BoolLitExpr(@$, false); }
         | MINUS expr %prec UMINUS                   { $$ = new ast::UnaryExpr(@$, $2, "-"); }
+        | NOT expr %prec NOT                        { $$ = new ast::UnaryExpr(@$, $2, "not"); }
         | LBRACKET expr_seq RBRACKET                { $$ = new ast::ArrayExpr(@$, $2);}
         | expr LBRACKET expr RBRACKET %prec ARRAY_DEREF { $$ = new ast::ArrayDerefExpr(@$, $1, $3); }
         | expr AND expr                             { $$ = new ast::BinOpExpr(@$, $1, $3, "and"); }

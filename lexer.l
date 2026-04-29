@@ -53,6 +53,7 @@ identifier      ([[:alpha:]][[:alnum:]_]*)
 "let"           { return Parser::token::LET; }
 "fn"            { return Parser::token::FUNCTION; }
 "for"           { return Parser::token::FOR; }
+"while"         { return Parser::token::WHILE; }
 "return"        { return Parser::token::RETURN; }
 "if"            { return Parser::token::IF; }
 "else"          { return Parser::token::ELSE; }

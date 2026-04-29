@@ -1,6 +1,7 @@
 #pragma once
 
 #include "value.hpp"
+#include "type_table.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -12,6 +13,27 @@ public:
     explicit Context(std::shared_ptr<Context> parent = nullptr) : parent_(std::move(parent)) {}
 
     void set(const std::string& name, const Value& value) { bindings_[name] = value; }
+
+    // Reassign an existing variable in the nearest enclosing scope that owns it.
+    // Enforces static typing: the new value must match the original declared type.
+    void update(const std::string& name, const Value& value) {
+        auto it = bindings_.find(name);
+        if (it != bindings_.end()) {
+            if (it->second.typeId() != value.typeId()) {
+                throw std::runtime_error(
+                    "Type mismatch in assignment to '" + name + "': "
+                    "cannot assign " + TypeTable::instance().getTypeName(value.typeId()) +
+                    " to variable of type " + TypeTable::instance().getTypeName(it->second.typeId()));
+            }
+            it->second = value;
+            return;
+        }
+        if (parent_) {
+            parent_->update(name, value);
+            return;
+        }
+        throw std::runtime_error("Undefined variable: " + name);
+    }
 
     Value get(const std::string& name) const {
         auto it = bindings_.find(name);

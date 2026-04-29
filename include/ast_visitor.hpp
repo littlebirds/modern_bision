@@ -7,6 +7,7 @@ namespace ast {
 // Forward declarations
 struct IntLitExpr;
 struct FloatLitExpr;
+struct BoolLitExpr;
 struct StringLitExpr;
 struct IdentExpr;
 struct UnaryExpr;
@@ -14,10 +15,12 @@ struct BinOpExpr;
 struct ArrayExpr;
 struct ArrayDerefExpr;
 struct LetExpr;
+struct AssignExpr;
 struct ExprSeq;
 struct ExprStmt;
 struct BlockStmt;
 struct IfStmt;
+struct WhileStmt;
 struct StmtList;
 struct FnLitExpr;
 struct CallExpr;
@@ -30,6 +33,7 @@ struct ASTVisitor {
     // Expressions
     virtual void visit(IntLitExpr& node) = 0;
     virtual void visit(FloatLitExpr& node) = 0;
+    virtual void visit(BoolLitExpr& node) = 0;
     virtual void visit(StringLitExpr& node) = 0;
     virtual void visit(IdentExpr& node) = 0;
     virtual void visit(UnaryExpr& node) = 0;
@@ -37,6 +41,7 @@ struct ASTVisitor {
     virtual void visit(ArrayExpr& node) = 0;
     virtual void visit(ArrayDerefExpr& node) = 0;
     virtual void visit(LetExpr& node) = 0;
+    virtual void visit(AssignExpr& node) = 0;
     virtual void visit(ExprSeq& node) = 0;
     virtual void visit(FnLitExpr& node) = 0;
     virtual void visit(CallExpr& node) = 0;
@@ -45,6 +50,7 @@ struct ASTVisitor {
     virtual void visit(ExprStmt& node) = 0;
     virtual void visit(BlockStmt& node) = 0;
     virtual void visit(IfStmt& node) = 0;
+    virtual void visit(WhileStmt& node) = 0;
     virtual void visit(StmtList& node) = 0;
     virtual void visit(ReturnStmt& node) = 0;
 };
