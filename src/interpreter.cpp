@@ -3,6 +3,13 @@
 #include <stdexcept>
 #include <string_view>
 
+// TODO: Closures — capture the lexical scope (ctx_) at fn definition time instead of global_ctx_
+// TODO: Built-in functions — puts(x), len(arr), push(arr, val), first(arr), last(arr), rest(arr)
+// TODO: Hash literals — {key: val} syntax; requires HashObject + disambiguation from block { }
+// TODO: String concatenation — "a" + "b" via + operator on StringObject
+// TODO: for loop — for x in arr { } once iterator/range semantics are designed
+// TODO: break / continue — requires BreakException / ContinueException similar to ReturnException
+
 namespace eval {
 
 Value Interpreter::evaluate(ast::Expr& expr) {
@@ -18,6 +25,10 @@ void Interpreter::visit(ast::IntLitExpr& node) {
 
 void Interpreter::visit(ast::FloatLitExpr& node) {
     result_ = Value(std::stod(node.literal));
+}
+
+void Interpreter::visit(ast::BoolLitExpr& node) {
+    result_ = Value(node.value);
 }
 
 void Interpreter::visit(ast::StringLitExpr& node) {
@@ -44,6 +55,8 @@ void Interpreter::visit(ast::UnaryExpr& node) {
         } else {
             throw std::runtime_error("Cannot negate non-numeric value");
         }
+    } else if (op == "not") {
+        result_ = Value(!operand.isTruthy());
     } else {
         throw std::runtime_error(std::string("Unknown unary operator: ") + node.prefix);
     }
@@ -212,6 +225,12 @@ void Interpreter::visit(ast::LetExpr& node) {
     result_ = val;
 }
 
+void Interpreter::visit(ast::AssignExpr& node) {
+    Value val = evaluate(*node.value);
+    ctx_->update(node.ident, val); // walks scope chain; enforces type consistency
+    result_ = val;
+}
+
 void Interpreter::visit(ast::ExprSeq& node) {
     result_ = Value();
     for (auto& expr : node.exprs) {
@@ -259,6 +278,17 @@ void Interpreter::visit(ast::IfStmt& node) {
     }
 
     result_ = Value();
+}
+
+void Interpreter::visit(ast::WhileStmt& node) {
+    result_ = Value();
+    while (true) {
+        Value cond = evaluate(*node.cond);
+        if (!cond.isTruthy()) break;
+        // Execute body in a new scope each iteration so loop-local lets don't leak
+        node.body->accept(*this);
+        // ReturnException propagates naturally up to the enclosing function
+    }
 }
 
 // --- Functions ---

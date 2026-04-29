@@ -26,6 +26,7 @@ public:
 
     void visit(ast::IntLitExpr& node) override;
     void visit(ast::FloatLitExpr& node) override;
+    void visit(ast::BoolLitExpr& node) override;
     void visit(ast::StringLitExpr& node) override;
     void visit(ast::IdentExpr& node) override;
     void visit(ast::UnaryExpr& node) override;
@@ -33,10 +34,12 @@ public:
     void visit(ast::ArrayExpr& node) override;
     void visit(ast::ArrayDerefExpr& node) override;
     void visit(ast::LetExpr& node) override;
+    void visit(ast::AssignExpr& node) override;
     void visit(ast::ExprSeq& node) override;
     void visit(ast::ExprStmt& node) override;
     void visit(ast::BlockStmt& node) override;
     void visit(ast::IfStmt& node) override;
+    void visit(ast::WhileStmt& node) override;
     void visit(ast::StmtList& node) override;
     void visit(ast::FnLitExpr& node) override;
     void visit(ast::CallExpr& node) override;

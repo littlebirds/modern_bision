@@ -12,6 +12,10 @@ void PrettyPrinter::visit(FloatLitExpr& node) {
     output_ << "(" << node.literal << ")";
 }
 
+void PrettyPrinter::visit(BoolLitExpr& node) {
+    output_ << (node.value ? "true" : "false");
+}
+
 void PrettyPrinter::visit(StringLitExpr& node) {
     output_ << "@" << node.loc << ">>\"" << node.literal << "\"";
 }
@@ -57,6 +61,11 @@ void PrettyPrinter::visit(ArrayDerefExpr& node) {
 
 void PrettyPrinter::visit(LetExpr& node) {
     output_ << "let " << node.ident << " = ";
+    node.value->accept(*this);
+}
+
+void PrettyPrinter::visit(AssignExpr& node) {
+    output_ << node.ident << " = ";
     node.value->accept(*this);
 }
 
@@ -130,6 +139,14 @@ void PrettyPrinter::visit(ReturnStmt& node) {
     output_ << "return ";
     node.value->accept(*this);
     output_ << ";";
+}
+
+void PrettyPrinter::visit(WhileStmt& node) {
+    std::string indent(node.nested_lvl, '\t');
+    output_ << indent << "while ";
+    node.cond->accept(*this);
+    output_ << "\n";
+    node.body->accept(*this);
 }
 
 } // namespace ast

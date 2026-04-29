@@ -10,6 +10,9 @@ void IntLitExpr::accept(ASTVisitor& visitor) {
 void FloatLitExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
+void BoolLitExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
 void StringLitExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
@@ -29,6 +32,9 @@ void ArrayDerefExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 void LetExpr::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+void AssignExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 void ExprSeq::accept(ASTVisitor& visitor) {
@@ -53,6 +59,9 @@ void CallExpr::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 void ReturnStmt::accept(ASTVisitor& visitor) {
+    visitor.visit(*this);
+}
+void WhileStmt::accept(ASTVisitor& visitor) {
     visitor.visit(*this);
 }
 

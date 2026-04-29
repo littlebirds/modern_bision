@@ -605,3 +605,173 @@ TEST_CASE("Interpreter: different function signatures have different type ids", 
     auto val2 = interpret("let g = fn(x float) int { 1; }; g(1.0); g;");
     CHECK(val1.typeId() != val2.typeId());
 }
+
+// --- not operator ---
+
+TEST_CASE("Interpreter: not true is false", "[interpreter][not]") {
+    auto val = interpret("not true;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == false);
+}
+
+TEST_CASE("Interpreter: not false is true", "[interpreter][not]") {
+    auto val = interpret("not false;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: not zero is true", "[interpreter][not]") {
+    auto val = interpret("not 0;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+TEST_CASE("Interpreter: not non-zero is false", "[interpreter][not]") {
+    auto val = interpret("not 42;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == false);
+}
+
+TEST_CASE("Interpreter: not in conditional", "[interpreter][not]") {
+    auto val = interpret("let x = false; if not x { 1; } else { 2; }");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 1);
+}
+
+TEST_CASE("Interpreter: double not", "[interpreter][not]") {
+    auto val = interpret("not not true;");
+    REQUIRE(val.isBool());
+    CHECK(val.asBool() == true);
+}
+
+// --- Variable reassignment ---
+
+TEST_CASE("Interpreter: reassignment updates value", "[interpreter][assign]") {
+    auto val = interpret("let x = 1; x = 2; x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 2);
+}
+
+TEST_CASE("Interpreter: reassignment result is new value", "[interpreter][assign]") {
+    auto val = interpret("let x = 10; x = 99;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 99);
+}
+
+TEST_CASE("Interpreter: reassignment to undefined variable throws", "[interpreter][assign]") {
+    REQUIRE_THROWS_AS(interpret("y = 5;"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: reassignment type mismatch throws", "[interpreter][assign]") {
+    REQUIRE_THROWS_AS(interpret("let x = 1; x = 1.5;"), std::runtime_error);
+}
+
+TEST_CASE("Interpreter: reassignment in inner scope mutates outer variable", "[interpreter][assign]") {
+    // x is declared in outer scope; assignment inside block should update it
+    auto val = interpret("let x = 10; { x = 20; } x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 20);
+}
+
+TEST_CASE("Interpreter: let in inner scope shadows but does not mutate outer", "[interpreter][assign]") {
+    // let inside block creates a new binding; outer x unchanged
+    auto val = interpret("let x = 10; { let x = 20; } x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: multiple reassignments accumulate", "[interpreter][assign]") {
+    auto val = interpret("let x = 0; x = 1; x = x + 1; x = x + 1; x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+}
+
+// --- While loop ---
+
+TEST_CASE("Interpreter: while loop body not executed when condition is false", "[interpreter][while]") {
+    auto val = interpret("let x = 0; while false { x = 1; } x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 0);
+}
+
+TEST_CASE("Interpreter: while loop counts up", "[interpreter][while]") {
+    auto val = interpret("let i = 0; while i < 5 { i = i + 1; } i;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 5);
+}
+
+TEST_CASE("Interpreter: while loop accumulates sum", "[interpreter][while]") {
+    // sum = 0+1+2+3+4 = 10
+    auto val = interpret(
+        "let i = 0;"
+        "let sum = 0;"
+        "while i < 5 { sum = sum + i; i = i + 1; }"
+        "sum;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: while loop with local variable does not leak to outer scope", "[interpreter][while]") {
+    // 'tmp' is declared inside the loop body; must not be visible after loop
+    auto val = interpret(
+        "let i = 0;"
+        "while i < 3 { let tmp = i * 2; i = i + 1; }"
+        "i;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+    REQUIRE_THROWS_AS(interpret(
+        "let i = 0;"
+        "while i < 3 { let tmp = i * 2; i = i + 1; }"
+        "tmp;"),
+        std::runtime_error);
+}
+
+TEST_CASE("Interpreter: while loop mutates outer variable from inside block", "[interpreter][while]") {
+    // Verifies reassignment (=) reaches through block scope to outer variable
+    auto val = interpret(
+        "let counter = 0;"
+        "while counter < 10 { counter = counter + 1; }"
+        "counter;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 10);
+}
+
+TEST_CASE("Interpreter: nested while loops", "[interpreter][while]") {
+    // 3x3 = 9 iterations, outer * inner both count
+    auto val = interpret(
+        "let i = 0;"
+        "let total = 0;"
+        "while i < 3 {"
+        "  let j = 0;"
+        "  while j < 3 { total = total + 1; j = j + 1; }"
+        "  i = i + 1;"
+        "}"
+        "total;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 9);
+}
+
+TEST_CASE("Interpreter: while loop with not condition", "[interpreter][while]") {
+    auto val = interpret(
+        "let done = false;"
+        "let x = 0;"
+        "while not done { x = x + 1; if x >= 3 { done = true; } }"
+        "x;");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 3);
+}
+
+TEST_CASE("Interpreter: while loop inside function with return", "[interpreter][while]") {
+    auto val = interpret(
+        "let findFirst = fn(target int) int {"
+        "  let i = 0;"
+        "  while i < 10 {"
+        "    if i == target { return i; }"
+        "    i = i + 1;"
+        "  }"
+        "  return -1;"
+        "};"
+        "findFirst(7);");
+    REQUIRE(val.isInt());
+    CHECK(val.asInt() == 7);
+}

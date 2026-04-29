@@ -81,6 +81,14 @@ struct FloatLitExpr : public LiteralExpr {
     void accept(ASTVisitor& visitor) override;
 };
 
+struct BoolLitExpr : public Expr {
+    bool value;
+
+    BoolLitExpr(const monkey::location& loc, bool value) : Expr(loc), value(value) {}
+
+    void accept(ASTVisitor& visitor) override;
+};
+
 struct StringLitExpr : public LiteralExpr {
     using LiteralExpr::LiteralExpr;
 
@@ -155,6 +163,19 @@ struct LetExpr : public Expr {
     LetExpr(const monkey::location& loc, std::string ident, Expr* value)
         : Expr(loc), ident(std::move(ident)), value(value) {}
     LetExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value)
+        : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
+    void accept(ASTVisitor& visitor) override;
+};
+
+// Reassigns an existing variable (must already be declared with let).
+// Static typing: the new value's type must match the original.
+struct AssignExpr : public Expr {
+    std::string ident;
+    std::unique_ptr<Expr> value;
+
+    AssignExpr(const monkey::location& loc, std::string ident, Expr* value)
+        : Expr(loc), ident(std::move(ident)), value(value) {}
+    AssignExpr(const monkey::location& loc, std::string ident, std::unique_ptr<Expr> value)
         : Expr(loc), ident(std::move(ident)), value(std::move(value)) {}
     void accept(ASTVisitor& visitor) override;
 };
@@ -254,6 +275,21 @@ struct ReturnStmt : public Stmt {
         : Stmt(loc), value(std::move(value)) {}
 
     void accept(ASTVisitor& visitor) override;
+};
+
+struct WhileStmt : public Stmt {
+    std::unique_ptr<Expr> cond;
+    std::unique_ptr<BlockStmt> body;
+
+    WhileStmt(const monkey::location& loc, Expr* cond, BlockStmt* body)
+        : Stmt(loc), cond(cond), body(body) {}
+    WhileStmt(const monkey::location& loc, std::unique_ptr<Expr> cond, std::unique_ptr<BlockStmt> body)
+        : Stmt(loc), cond(std::move(cond)), body(std::move(body)) {}
+
+    void setIndentationLvl(int adjustment) override { body->setIndentationLvl(adjustment); }
+    void accept(ASTVisitor& visitor) override;
+
+    // TODO: add BreakStmt / ContinueStmt support once break/continue keywords are added
 };
 
 } // namespace ast
