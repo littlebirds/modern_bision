@@ -147,6 +147,15 @@ public:
         throw std::runtime_error("Unknown type: " + name);
     }
 
+    static bool isKnownTypeName(const std::string& name) {
+        try {
+            resolveTypeName(name);
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
     // Prevent copying
     TypeTable(const TypeTable&) = delete;
     TypeTable& operator=(const TypeTable&) = delete;

@@ -220,6 +220,9 @@ void Interpreter::visit(ast::ArrayDerefExpr& node) {
 }
 
 void Interpreter::visit(ast::LetExpr& node) {
+    if (TypeTable::isKnownTypeName(node.ident)) {
+        throw std::runtime_error("Cannot use type name '" + node.ident + "' as a variable identifier");
+    }
     Value val = evaluate(*node.value);
     ctx_->set(node.ident, val);
     result_ = val;
@@ -311,7 +314,7 @@ void Interpreter::visit(ast::FnLitExpr& node) {
 
     auto fnObj = std::make_shared<FunctionObject>(
         std::move(paramNames), std::move(paramTypeIds),
-        declaredRetTid, node.body.get());
+        declaredRetTid, std::move(node.body));
     result_ = Value(std::move(fnObj));
 }
 

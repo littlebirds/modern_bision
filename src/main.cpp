@@ -1,14 +1,15 @@
 #include "fstream"
 #include <cstring>
+#include <sstream>
 #include "Scanner.hpp"
 #include "Parser.hpp"
-#include "pretty_printer.hpp"
+#include "interpreter.hpp"
 
 void banner() {
     std::cout << "Monkey Programming Language R.E.P.L" << std::endl;
     std::cout << "Version 0.1"
               << "\n\n";
-    std::cout << "Type ctrl-D to parse input and type ctrl-c to exit REPL." << std::endl;
+    std::cout << "Type ctrl-D to exit REPL." << std::endl;
     std::cout << "<---------------------------------------------------->" << std::endl;
 }
 
@@ -20,6 +21,45 @@ void usage() {
     std::cout << " Example: monkey -i" << std::endl;
 }
 
+static bool isInputComplete(const std::string& input) {
+    int brace_bal = 0;
+    int bracket_bal = 0;
+    int paren_bal = 0;
+    bool in_string = false;
+    bool in_comment = false;
+    for (size_t i = 0; i < input.size(); i++) {
+        char c = input[i];
+        if (in_comment) {
+            if (c == '\n') in_comment = false;
+            continue;
+        }
+        if (in_string) {
+            if (c == '\\') { i++; continue; }
+            if (c == '"') in_string = false;
+            continue;
+        }
+        if (c == '"') { in_string = true; continue; }
+        if (c == '/' && i + 1 < input.size() && input[i + 1] == '/') {
+            in_comment = true;
+            i++;
+            continue;
+        }
+        if (c == '{') brace_bal++;
+        else if (c == '}') brace_bal--;
+        else if (c == '[') bracket_bal++;
+        else if (c == ']') bracket_bal--;
+        else if (c == '(') paren_bal++;
+        else if (c == ')') paren_bal--;
+    }
+
+    if (brace_bal != 0 || bracket_bal != 0 || paren_bal != 0) return false;
+
+    int j = static_cast<int>(input.size()) - 1;
+    while (j >= 0 && (input[j] == ' ' || input[j] == '\t' || input[j] == '\n' || input[j] == '\r')) j--;
+    if (j < 0) return true;
+    return input[j] == ';' || input[j] == '}';
+}
+
 int main(int argc, char** argv) {
 
     if (argc < 2) {
@@ -29,27 +69,56 @@ int main(int argc, char** argv) {
     const char* mode = argv[1];
     if (strncmp(mode, "-i", 2) == 0) {
         banner();
-        ast::StmtList stmtList;
+        eval::Interpreter interpreter;
+        std::string buffer;
+        bool continuation = false;
+
         while (true) {
+            std::cout << (continuation ? "... " : ">> ") << std::flush;
+
+            std::string line;
+            if (!std::getline(std::cin, line)) {
+                std::cout << std::endl;
+                break;
+            }
+
+            if (continuation && (line.empty() || (!line.empty() && line[0] == '\x1b'))) {
+                std::cout << "canceled" << std::endl;
+                buffer.clear();
+                continuation = false;
+                continue;
+            }
+
+            buffer += line + "\n";
+
+            if (!isInputComplete(buffer)) {
+                continuation = true;
+                continue;
+            }
+
+            std::istringstream iss(buffer);
             std::unique_ptr<ast::Node> pAST;
-            monkey::Scanner scanner{std::cin, std::cerr};
+            monkey::Scanner scanner{iss, std::cerr};
             monkey::Parser parser{&scanner, pAST};
-            parser.parse();
-            if (pAST) {
-                ast::PrettyPrinter printer;
-                pAST->accept(printer);
-                std::cout << printer.result() << std::endl;
-                if (auto pprog = static_cast<ast::StmtList*>(pAST.get())) {
-                    for (auto& stmt : pprog->statements) {
-                        stmtList.append(stmt);
+
+            int parse_result = parser.parse();
+
+            if (parse_result == 0 && pAST) {
+                try {
+                    pAST->accept(interpreter);
+                    eval::Value result = interpreter.result();
+                    if (!result.isNull()) {
+                        std::cout << result.toString() << std::endl;
                     }
-                } else {
-                    std::cerr << "Error: Expected a Program node." << std::endl;
+                } catch (const std::exception& ex) {
+                    std::cerr << "Runtime error: " << ex.what() << std::endl;
                 }
             } else {
-                std::cerr << "Parsing failed to produce AST." << std::endl;
+                std::cerr << "Parse error." << std::endl;
             }
-            clearerr(stdin);
+
+            buffer.clear();
+            continuation = false;
         }
     }
 
@@ -69,10 +138,18 @@ int main(int argc, char** argv) {
         monkey::Parser parser{&scanner, pAST};
         parser.parse();
         if (pAST) {
-            ast::PrettyPrinter printer;
-            pAST->accept(printer);
-            std::cout << printer.result() << std::endl;
-            return 0; // Clean up the allocated memory
+            eval::Interpreter interpreter;
+            try {
+                pAST->accept(interpreter);
+                eval::Value result = interpreter.result();
+                if (!result.isNull()) {
+                    std::cout << result.toString() << std::endl;
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "Runtime error: " << ex.what() << std::endl;
+                return 1;
+            }
+            return 0;
         } else {
             std::cerr << "Parsing failed to produce AST." << std::endl;
             return 1;

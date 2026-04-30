@@ -39,10 +39,9 @@
 }
  
 %token <int>                    LBRACE 
-%token                          EOL LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
+%token                          LPAREN RPAREN LBRACKET RBRACKET RBRACE COLON SEMICOLON COMMA DOT ASSIGN
 %token                          LET FUNCTION FOR WHILE RETURN IF ELSE ELIF
 %token                          TRUE FALSE
-%token                          KW_INT KW_FLOAT KW_STRING KW_BOOL
 %token <std::string>            LIT_INT LIT_FLOAT LIT_STR 
 %token <std::string>            Ident
 
@@ -75,7 +74,7 @@
 
 %start program
 
-%%      
+%%
 program : stmt_list                                 { this->ppRoot = std::unique_ptr<ast::Node>($1); }
         ;       
 
@@ -95,10 +94,7 @@ opt_else: %empty                                    { $$ = std::nullopt; }
         | ELSE block_stmt                           { $$ = std::make_optional($2); }
         ;
 
-type_name : KW_INT                                  { $$ = "int"; }
-        | KW_FLOAT                                  { $$ = "float"; }
-        | KW_STRING                                 { $$ = "string"; }
-        | KW_BOOL                                   { $$ = "bool"; }
+type_name : Ident                                  { $$ = $1; }
         ;
 
 typed_param : Ident type_name                       { $$ = std::make_pair($1, $2); }
@@ -113,14 +109,13 @@ opt_return_type : %empty                            { $$ = std::nullopt; }
         | type_name                                 { $$ = std::make_optional($1); }
         ;
 
-stmt    : EOL                                       { ; }
-        | expr SEMICOLON                            { $$ = new ast::ExprStmt(@$, $1); }        
+stmt    : expr SEMICOLON                            { $$ = new ast::ExprStmt(@$, $1); }        
         | Ident ASSIGN expr SEMICOLON               { $$ = new ast::ExprStmt(@$, new ast::AssignExpr(@$, $1, $3)); }
         | block_stmt                                { $$ = $1; }
         | if_stmt                                   { $$ = $1; }
         | while_stmt                                { $$ = $1; }
         | RETURN expr SEMICOLON                     { $$ = new ast::ReturnStmt(@$, $2); }
-        | error EOL                                 { yyerrok; }
+        | error SEMICOLON                           { yyerrok; }
         ;
 
 // TODO: for loop: for Ident in expr block_stmt (requires iterator/range support)

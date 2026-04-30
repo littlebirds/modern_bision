@@ -177,12 +177,12 @@ public:
     FunctionObject(std::vector<std::string> paramNames,
                    std::vector<TypeId> paramTypeIds,
                    TypeId declaredReturnTypeId,
-                   ast::BlockStmt* body)
+                   std::unique_ptr<ast::BlockStmt> body)
         : paramNames_(std::move(paramNames)),
           paramTypeIds_(std::move(paramTypeIds)),
           declaredReturnTypeId_(declaredReturnTypeId),
           inferredReturnTypeId_(TYPE_UNKNOWN),
-          body_(body) {}
+          body_(std::move(body)) {}
 
     TypeId getTypeId() const override {
         TypeId retTid = (declaredReturnTypeId_ != TYPE_UNKNOWN)
@@ -214,14 +214,14 @@ public:
     TypeId declaredReturnTypeId() const { return declaredReturnTypeId_; }
     TypeId inferredReturnTypeId() const { return inferredReturnTypeId_; }
     void setInferredReturnTypeId(TypeId tid) { inferredReturnTypeId_ = tid; }
-    ast::BlockStmt* body() const { return body_; }
+    ast::BlockStmt* body() const { return body_.get(); }
 
 private:
     std::vector<std::string> paramNames_;
     std::vector<TypeId> paramTypeIds_;
     TypeId declaredReturnTypeId_;
     TypeId inferredReturnTypeId_;
-    ast::BlockStmt* body_;
+    std::unique_ptr<ast::BlockStmt> body_;
 };
 
 inline TypeId Value::typeId() const {

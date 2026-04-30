@@ -60,10 +60,6 @@ identifier      ([[:alpha:]][[:alnum:]_]*)
 "elif"          { return Parser::token::ELIF; }
 "true"          { return Parser::token::TRUE; }
 "false"         { return Parser::token::FALSE; }
-"int"           { return Parser::token::KW_INT; }
-"float"         { return Parser::token::KW_FLOAT; }
-"string"        { return Parser::token::KW_STRING; }
-"bool"          { return Parser::token::KW_BOOL; }
 "and"           { return Parser::token::AND; }
 "or"            { return Parser::token::OR; }
 "not"           { return Parser::token::NOT; }
@@ -92,7 +88,7 @@ identifier      ([[:alpha:]][[:alnum:]_]*)
 "="             { return Parser::token::ASSIGN; }
 "."             { return Parser::token::DOT; }
 [ \t]          { /* skip whitespace */ }
-\n+             { FIX_MY_LINES; return Parser::token::EOL; }
+\n+             { FIX_MY_LINES; /* newlines are whitespace */ }
 \/\/[^\n]*     { /* skip single line comment */ }
 {identifier}    { yylval->emplace<std::string>(std::string(YYText(), YYLeng())); return Parser::token::Ident; }
 <<EOF>>         return Parser::token::YYEOF;
