@@ -1,9 +1,13 @@
 #include "fstream"
 #include <cstring>
 #include <sstream>
+#include <llvm/Support/raw_ostream.h>
 #include "Scanner.hpp"
 #include "Parser.hpp"
 #include "interpreter.hpp"
+#include "compiler.hpp"
+#include "passes/semantic_pass.hpp"
+#include "passes/llvm_ir_pass.hpp"
 
 void banner() {
     std::cout << "Monkey Programming Language R.E.P.L" << std::endl;
@@ -14,11 +18,13 @@ void banner() {
 }
 
 void usage() {
-    std::cout << " Usage: monkey [-i | -f <filename>]" << std::endl;
-    std::cout << " -i: Interactive mode" << std::endl;
-    std::cout << " -f <filename>: Read from file" << std::endl;
+    std::cout << " Usage: monkey [-i | -f <filename> | -c <filename>]" << std::endl;
+    std::cout << " -i: Interactive REPL mode" << std::endl;
+    std::cout << " -f <filename>: Interpret file" << std::endl;
+    std::cout << " -c <filename>: Compile file to LLVM IR" << std::endl;
     std::cout << " Example: monkey -f test.txt" << std::endl;
     std::cout << " Example: monkey -i" << std::endl;
+    std::cout << " Example: monkey -c test.txt" << std::endl;
 }
 
 static bool isInputComplete(const std::string& input) {
@@ -154,5 +160,39 @@ int main(int argc, char** argv) {
             std::cerr << "Parsing failed to produce AST." << std::endl;
             return 1;
         }
+    }
+
+    if (strncmp(mode, "-c", 2) == 0) {
+        if (argc != 3) {
+            std::cerr << "Error: Missing filename argument." << std::endl;
+            return 1;
+        }
+        std::unique_ptr<ast::Node> pAST;
+        std::ifstream input;
+        input.open(argv[2], std::ios::in);
+        if (!input.is_open()) {
+            std::cerr << "Error: Could not open file " << argv[2] << " for reading." << std::endl;
+            return 1;
+        }
+        monkey::Scanner scanner{input, std::cerr};
+        monkey::Parser parser{&scanner, pAST};
+        parser.parse();
+        if (!pAST) {
+            std::cerr << "Parsing failed to produce AST." << std::endl;
+            return 1;
+        }
+        try {
+            eval::Compiler c;
+            c.ast = static_cast<ast::StmtList*>(pAST.get());
+            c.addPass("semantic",   eval::semanticAnalysis);
+            c.addPass("llvm-ir-gen", eval::llvmIRGen);
+            c.run();
+            if (c.module)
+                c.module->print(llvm::errs(), nullptr);
+        } catch (const std::exception& ex) {
+            std::cerr << "Compilation error: " << ex.what() << std::endl;
+            return 1;
+        }
+        return 0;
     }
 }
