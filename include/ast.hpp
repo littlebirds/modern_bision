@@ -6,19 +6,32 @@
 #include <vector>
 #include <optional>
 #include <utility>
+#include <any>
 #include "location.hh"
+#include "type_table.hpp"
 
 namespace ast {
 
 struct ASTVisitor; // Forward declaration
 
+// Inline annotation types — lightweight pass-to-pass communication.
+// Passes attach these via Node::annotation; downstream passes query them.
+struct SemanticInfo {
+    eval::TypeId type = eval::TYPE_UNKNOWN;
+};
+
 struct Node {
     monkey::location loc;
+    std::any annotation;  // pass adendum (SemanticInfo, llvm::Value*, etc.)
 
     Node() = delete;
     Node(const monkey::location& location) : loc(location) {}
     virtual ~Node() = default;
     virtual void accept(ASTVisitor& visitor) = 0;
+
+    template <typename T> T* getAnnotation() { return std::any_cast<T>(&annotation); }
+    template <typename T> bool hasAnnotation() const { return annotation.type() == typeid(T); }
+    template <typename T> void setAnnotation(T val) { annotation = std::move(val); }
 };
 
 struct Expr : public Node {
