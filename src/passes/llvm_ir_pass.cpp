@@ -5,6 +5,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Intrinsics.h>
 #include <stdexcept>
 
 using ast::SemanticInfo;
@@ -82,6 +83,7 @@ private:
     llvm::BasicBlock* retBlock_ = nullptr;
     llvm::Value* retAlloca_ = nullptr;
     llvm::Value* val_ = nullptr;
+    int fnNameCounter_ = 0;
 
     llvm::Value* visitExpr(ast::Expr& e) { e.accept(*this); return val_; }
     const Sym* resolve(const std::string& n) {
@@ -111,19 +113,33 @@ void LLVMGen::beginFn(llvm::Function* fn, TypeId retTid) {
         scope_->define(arg.getName().str(), Sym{tid, a, nullptr, true});
     }
     if (retTid != TYPE_NULL) {
-        retAlloca_ = entryAlloca(toLLVMType(retTid, *ctx_), "retval");
+        auto* retType = toLLVMType(retTid, *ctx_);
+        retAlloca_ = entryAlloca(retType, "retval");
+        // Initialize retAlloca to zero to avoid reading uninitialized memory
+        bld_->CreateStore(llvm::Constant::getNullValue(retType), retAlloca_);
         retBlock_ = llvm::BasicBlock::Create(*ctx_, "return", fn);
+    } else {
+        retAlloca_ = nullptr;
+        retBlock_ = nullptr;
     }
 }
 
 void LLVMGen::finishFn(TypeId retTid) {
+    // If the current block has no terminator, branch to return block (or emit ret directly)
     if (!bld_->GetInsertBlock()->getTerminator()) {
-        if (retTid == TYPE_NULL) bld_->CreateRetVoid();
-        else if (retAlloca_) {
+        if (retTid == TYPE_NULL) {
+            bld_->CreateRetVoid();
+        } else if (retAlloca_) {
+            // Store the last expression value as implicit return
             if (val_ && !val_->getType()->isVoidTy())
                 bld_->CreateStore(val_, retAlloca_);
-            bld_->CreateRet(bld_->CreateLoad(toLLVMType(retTid, *ctx_), retAlloca_));
+            bld_->CreateBr(retBlock_);
         }
+    }
+    // Emit the return block: load retval and return it
+    if (retBlock_) {
+        bld_->SetInsertPoint(retBlock_);
+        bld_->CreateRet(bld_->CreateLoad(toLLVMType(retTid, *ctx_), retAlloca_, "retload"));
     }
 }
 
@@ -165,8 +181,34 @@ void LLVMGen::visit(ast::BinOpExpr& n) {
     if (op == "+") val_ = fp ? bld_->CreateFAdd(l,r) : bld_->CreateAdd(l,r);
     else if (op == "-") val_ = fp ? bld_->CreateFSub(l,r) : bld_->CreateSub(l,r);
     else if (op == "*") val_ = fp ? bld_->CreateFMul(l,r) : bld_->CreateMul(l,r);
-    else if (op == "/") val_ = fp ? bld_->CreateFDiv(l,r) : bld_->CreateSDiv(l,r);
-    else if (op == "%") val_ = fp ? bld_->CreateFRem(l,r) : bld_->CreateSRem(l,r);
+    else if (op == "/" || op == "%") {
+        // Guard against division by zero for integer operations
+        if (!fp) {
+            auto* isZero = bld_->CreateICmpEQ(r, llvm::ConstantInt::get(r->getType(), 0), "divzero");
+            auto* okBB = llvm::BasicBlock::Create(*ctx_, "div.ok", curFn_);
+            auto* trapBB = llvm::BasicBlock::Create(*ctx_, "div.trap", curFn_);
+            bld_->CreateCondBr(isZero, trapBB, okBB);
+            bld_->SetInsertPoint(trapBB);
+            auto* trapFn = llvm::Intrinsic::getOrInsertDeclaration(mod_, llvm::Intrinsic::trap);
+            bld_->CreateCall(trapFn);
+            bld_->CreateUnreachable();
+            bld_->SetInsertPoint(okBB);
+        }
+        if (op == "/") val_ = fp ? bld_->CreateFDiv(l,r) : bld_->CreateSDiv(l,r);
+        else           val_ = fp ? bld_->CreateFRem(l,r) : bld_->CreateSRem(l,r);
+    }
+    else if (op == "^") {
+        // Exponent: use llvm.pow intrinsic (operates on doubles)
+        if (!fp) {
+            l = bld_->CreateSIToFP(l, llvm::Type::getDoubleTy(*ctx_));
+            r = bld_->CreateSIToFP(r, llvm::Type::getDoubleTy(*ctx_));
+        }
+        auto* powFn = llvm::Intrinsic::getOrInsertDeclaration(
+            mod_, llvm::Intrinsic::pow, {llvm::Type::getDoubleTy(*ctx_)});
+        auto* result = bld_->CreateCall(powFn, {l, r}, "powtmp");
+        if (!fp) val_ = bld_->CreateFPToSI(result, llvm::Type::getInt64Ty(*ctx_));
+        else     val_ = result;
+    }
     else if (op == "==") val_ = fp ? bld_->CreateFCmpOEQ(l,r) : bld_->CreateICmpEQ(l,r);
     else if (op == "!=") val_ = fp ? bld_->CreateFCmpONE(l,r) : bld_->CreateICmpNE(l,r);
     else if (op == ">")  val_ = fp ? bld_->CreateFCmpOGT(l,r) : bld_->CreateICmpSGT(l,r);
@@ -232,16 +274,43 @@ void LLVMGen::visit(ast::CallExpr& n) {
 void LLVMGen::visit(ast::IfStmt& n) {
     auto* cond = visitExpr(*n.cond);
     if (!cond->getType()->isIntegerTy(1)) cond = bld_->CreateIsNotNull(cond, "tobool");
+    auto* mBB = llvm::BasicBlock::Create(*ctx_, "ifmerge", curFn_);
+
+    // Determine the else/elif chain target
     auto* tBB = llvm::BasicBlock::Create(*ctx_, "then", curFn_);
     auto* eBB = llvm::BasicBlock::Create(*ctx_, "else", curFn_);
-    auto* mBB = llvm::BasicBlock::Create(*ctx_, "ifmerge", curFn_);
     bld_->CreateCondBr(cond, tBB, eBB);
-    bld_->SetInsertPoint(tBB); n.truthy_branch->accept(*this);
+
+    // Compile the truthy branch
+    bld_->SetInsertPoint(tBB);
+    n.truthy_branch->accept(*this);
     if (!bld_->GetInsertBlock()->getTerminator()) bld_->CreateBr(mBB);
+
+    // Compile elif branches as a chain of condition checks
     bld_->SetInsertPoint(eBB);
+    if (n.elseIfs && !n.elseIfs->conditions.empty()) {
+        for (size_t i = 0; i < n.elseIfs->conditions.size(); ++i) {
+            auto* elifCond = visitExpr(*n.elseIfs->conditions[i]);
+            if (!elifCond->getType()->isIntegerTy(1))
+                elifCond = bld_->CreateIsNotNull(elifCond, "tobool");
+            auto* elifThenBB = llvm::BasicBlock::Create(*ctx_, "elif.then", curFn_);
+            auto* elifNextBB = llvm::BasicBlock::Create(*ctx_, "elif.next", curFn_);
+            bld_->CreateCondBr(elifCond, elifThenBB, elifNextBB);
+
+            bld_->SetInsertPoint(elifThenBB);
+            n.elseIfs->branches[i]->accept(*this);
+            if (!bld_->GetInsertBlock()->getTerminator()) bld_->CreateBr(mBB);
+
+            bld_->SetInsertPoint(elifNextBB);
+        }
+    }
+
+    // Compile the else branch (if any) — insert point is at the final else/elif.next block
     if (n.optElse) n.optElse.value()->accept(*this);
     if (!bld_->GetInsertBlock()->getTerminator()) bld_->CreateBr(mBB);
-    bld_->SetInsertPoint(mBB); val_ = nullptr;
+
+    bld_->SetInsertPoint(mBB);
+    val_ = nullptr;
 }
 
 void LLVMGen::visit(ast::WhileStmt& n) {
@@ -275,9 +344,8 @@ llvm::Function* LLVMGen::declareFn(ast::FnLitExpr& n) {
         pns.push_back(name);
     }
     auto* fnty = llvm::FunctionType::get(toLLVMType(retTid, *ctx_), pts, false);
-    static int ctr = 0;
     auto* fn = llvm::Function::Create(fnty, llvm::Function::InternalLinkage,
-                                       "fn." + std::to_string(ctr++), mod_);
+                                       "fn." + std::to_string(fnNameCounter_++), mod_);
     for (size_t i = 0; i < pns.size(); ++i) fn->getArg(i)->setName(pns[i]);
     return fn;
 }

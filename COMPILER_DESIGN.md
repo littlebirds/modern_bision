@@ -60,14 +60,14 @@ architecture's calling convention.
                     ▼                                ▼
             ┌───────────────┐              ┌─────────────────┐
             │  Interpreter  │              │    Compiler      │
-            │  (existing)   │              │  (new — 486 loc) │
+            │  (existing)   │              │  (pass manager)  │
             │  Value eval   │              │  LLVM IR gen     │
             └───────────────┘              └────────┬────────┘
                                                     │
                                             ┌───────┴───────┐
                                             │   SymTab       │
-                                            │  (new — 56 loc)│
-                                            │  Scope + Symbol│
+                                            │  (new — 54 loc)│
+                                            │  Scope<T>      │
                                             └───────────────┘
 ```
 
@@ -75,15 +75,21 @@ architecture's calling convention.
 
 | File | Lines | Purpose |
 |---|---|---|
-| `include/symtab.hpp` | 56 | Scope chain with `Symbol` (name, type, slot, func pointer) |
-| `include/compiler.hpp` | 113 | Compiler class extending `ASTVisitor` |
-| `src/compiler.cpp` | 486 | Full LLVM IR generation for all AST nodes |
+| `include/symtab.hpp` | 54 | Generic `Scope<T>` template for scope chains |
+| `include/compiler.hpp` | 67 | `Compiler` pass manager class with shared state |
+| `include/passes/semantic_pass.hpp` | 11 | Semantic analysis pass declaration |
+| `include/passes/llvm_ir_pass.hpp` | 12 | LLVM IR generation pass declaration |
+| `src/passes/semantic_pass.cpp` | ~155 | Scope analysis + type checking visitor |
+| `src/passes/llvm_ir_pass.cpp` | ~320 | Full LLVM IR generation for all AST nodes |
 
 ### Modified Files
 
 | File | Change |
 |---|---|
-| `CMakeLists.txt` | `find_package(LLVM)`, link `core support native` |
+| `CMakeLists.txt` | `find_package(LLVM)`, link `core support native`, add pass sources |
+| `include/ast.hpp` | Added `SemanticInfo` annotation struct, `std::any annotation` on `Node` |
+| `include/interpreter.hpp` | Replaced `Context` with `Scope<Value>` |
+| `src/interpreter.cpp` | Updated to use `Scope` API (`define`/`resolve`/`resolveMut`) |
 | `src/main.cpp` | `-c <file>` mode: parse → compile → dump IR |
 
 ### How Calls / Recursion Work
@@ -151,14 +157,19 @@ field named `alloca`. Renamed to `slot`.
 the value if the key doesn't exist. Without a default constructor, this fails
 at compile time. Added `Symbol()` with zero-initialized fields.
 
-### 3.2 Compiler (`include/compiler.hpp` + `src/compiler.cpp`)
+### 3.2 Compiler (`include/compiler.hpp` + `src/passes/llvm_ir_pass.cpp`)
 
 ```
-Compiler
-  ├── LLVM infra:  context_, module_, builder_
-  ├── Scope chain: currentScope_  (enterScope/exitScope)
-  ├── Function state: currentFn_, returnAlloca_, returnBlock_
-  └── Result register: value_  (like interpreter's result_)
+Compiler (pass manager)
+  ├── Pipeline: vector of {name, function} passes
+  ├── Shared state: ast, llvmCtx, module, builder
+  └── Passes: semanticAnalysis → llvmIRGen
+
+LLVMGen (internal to llvm_ir_pass.cpp)
+  ├── LLVM infra:  ctx_, mod_, bld_
+  ├── Scope chain: scope_  (enterScope/exitScope)
+  ├── Function state: curFn_, retAlloca_, retBlock_
+  └── Result register: val_  (like interpreter's result_)
 ```
 
 **Key design decisions:**
@@ -342,10 +353,17 @@ ifmerge:
 
 ```
 modified:   CMakeLists.txt
+modified:   include/ast.hpp
+modified:   include/interpreter.hpp
+modified:   src/interpreter.cpp
 modified:   src/main.cpp
+deleted:    include/context.hpp
 new file:   include/symtab.hpp
 new file:   include/compiler.hpp
-new file:   src/compiler.cpp
+new file:   include/passes/semantic_pass.hpp
+new file:   include/passes/llvm_ir_pass.hpp
+new file:   src/passes/semantic_pass.cpp
+new file:   src/passes/llvm_ir_pass.cpp
 ```
 
 All existing tests still pass (`ctest --test-dir build` → 1/1 passed).

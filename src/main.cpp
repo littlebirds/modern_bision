@@ -1,6 +1,7 @@
 #include "fstream"
 #include <cstring>
 #include <sstream>
+#include <cassert>
 #include <llvm/Support/raw_ostream.h>
 #include "Scanner.hpp"
 #include "Parser.hpp"
@@ -183,7 +184,9 @@ int main(int argc, char** argv) {
         }
         try {
             eval::Compiler c;
-            c.ast = static_cast<ast::StmtList*>(pAST.get());
+            auto* stmtList = dynamic_cast<ast::StmtList*>(pAST.get());
+            assert(stmtList && "Expected AST root to be a StmtList");
+            c.ast = stmtList;
             c.addPass("semantic",   eval::semanticAnalysis);
             c.addPass("llvm-ir-gen", eval::llvmIRGen);
             c.run();

@@ -10,7 +10,9 @@ namespace {
 
 struct SemanticSym {
     TypeId type = TYPE_UNKNOWN;
+    TypeId returnType = TYPE_UNKNOWN; // for function symbols: the return type
     bool isMutable = true;
+    bool isFunction = false;
 };
 
 // Internal AST visitor — not exposed as a Pass, just an implementation detail.
@@ -74,7 +76,9 @@ public:
         if (TypeTable::isKnownTypeName(node.ident))
             throw std::runtime_error("Cannot use type name '" + node.ident + "' as identifier");
         TypeId t = resolveType(*node.value);
-        scope_->define(node.ident, SemanticSym{t, true});
+        // If the value is a function literal, record it as a function symbol with its return type
+        bool isFn = dynamic_cast<ast::FnLitExpr*>(node.value.get()) != nullptr;
+        scope_->define(node.ident, SemanticSym{t, isFn ? t : TYPE_UNKNOWN, true, isFn});
         curType_ = t;
         node.setAnnotation(SemanticInfo{curType_});
     }
@@ -92,25 +96,40 @@ public:
         std::vector<TypeId> ptids;
         for (auto& [name, tn] : node.params)
             ptids.push_back(TypeTable::resolveTypeName(tn));
-        TypeId retTid = node.returnType ? TypeTable::resolveTypeName(*node.returnType) : TYPE_INT;
+        TypeId retTid = node.returnType ? TypeTable::resolveTypeName(*node.returnType) : TYPE_UNKNOWN;
         enterScope();
         for (size_t i = 0; i < node.params.size(); ++i)
-            scope_->define(node.params[i].first, SemanticSym{ptids[i], true});
+            scope_->define(node.params[i].first, SemanticSym{ptids[i], TYPE_UNKNOWN, true, false});
         node.body->accept(*this);
         exitScope();
-        curType_ = TYPE_UNKNOWN;
+        // The function literal itself carries its return type for callers to use.
+        curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});
     }
 
     void visit(ast::CallExpr& node) override {
         resolveType(*node.callee);
         if (node.arguments) for (auto& a : node.arguments->exprs) resolveType(*a);
-        curType_ = TYPE_INT; // simplified
+        // Try to resolve the callee's return type from the scope
+        TypeId retTid = TYPE_UNKNOWN;
+        if (auto* ident = dynamic_cast<ast::IdentExpr*>(node.callee.get())) {
+            const auto* sym = scope_->resolve(ident->name);
+            if (sym && sym->isFunction) {
+                retTid = sym->returnType;
+            }
+        }
+        curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});
     }
 
-    void visit(ast::ArrayExpr&) override { curType_ = TYPE_UNKNOWN; }
-    void visit(ast::ArrayDerefExpr&) override { curType_ = TYPE_UNKNOWN; }
+    void visit(ast::ArrayExpr& node) override {
+        throw std::runtime_error("[" + std::to_string(node.loc.begin.line) + ":"
+            + std::to_string(node.loc.begin.column) + "] Array literals are not supported in compiled mode");
+    }
+    void visit(ast::ArrayDerefExpr& node) override {
+        throw std::runtime_error("[" + std::to_string(node.loc.begin.line) + ":"
+            + std::to_string(node.loc.begin.column) + "] Array indexing is not supported in compiled mode");
+    }
     void visit(ast::ExprSeq& node) override {
         for (auto& e : node.exprs) resolveType(*e); }
 
