@@ -38,7 +38,9 @@ void Interpreter::visit(ast::StringLitExpr& node) {
 // --- Identifier ---
 
 void Interpreter::visit(ast::IdentExpr& node) {
-    result_ = ctx_->get(node.name);
+    const auto* val = ctx_->resolve(node.name);
+    if (!val) throw std::runtime_error("Undefined variable: " + node.name);
+    result_ = *val;
 }
 
 // --- Unary ---
@@ -224,13 +226,22 @@ void Interpreter::visit(ast::LetExpr& node) {
         throw std::runtime_error("Cannot use type name '" + node.ident + "' as a variable identifier");
     }
     Value val = evaluate(*node.value);
-    ctx_->set(node.ident, val);
+    ctx_->define(node.ident, val);
     result_ = val;
 }
 
 void Interpreter::visit(ast::AssignExpr& node) {
     Value val = evaluate(*node.value);
-    ctx_->update(node.ident, val); // walks scope chain; enforces type consistency
+    // Walk scope chain to find existing binding; enforce type consistency
+    auto* existing = ctx_->resolveMut(node.ident);
+    if (!existing) throw std::runtime_error("Undefined variable: " + node.ident);
+    if (existing->typeId() != val.typeId()) {
+        throw std::runtime_error(
+            "Type mismatch in assignment to '" + node.ident + "': "
+            "cannot assign " + TypeTable::instance().getTypeName(val.typeId()) +
+            " to variable of type " + TypeTable::instance().getTypeName(existing->typeId()));
+    }
+    *existing = val;
     result_ = val;
 }
 
@@ -246,7 +257,7 @@ void Interpreter::visit(ast::ExprStmt& node) {
 }
 
 void Interpreter::visit(ast::BlockStmt& node) {
-    ctx_ = std::make_shared<Context>(ctx_);
+    ctx_ = std::make_shared<ValueScope>(ctx_);
     node.stmtList->accept(*this);
     ctx_ = ctx_->parent();
 }
@@ -360,9 +371,9 @@ void Interpreter::visit(ast::CallExpr& node) {
     }
 
     // Create new scope: parent is global scope (no closures)
-    auto fnCtx = std::make_shared<Context>(global_ctx_);
+    auto fnCtx = std::make_shared<ValueScope>(global_ctx_);
     for (size_t i = 0; i < args.size(); ++i) {
-        fnCtx->set(fnObj->paramNames()[i], args[i]);
+        fnCtx->define(fnObj->paramNames()[i], args[i]);
     }
 
     // Save and swap context

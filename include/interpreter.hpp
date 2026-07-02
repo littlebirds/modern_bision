@@ -2,7 +2,7 @@
 
 #include "ast_visitor.hpp"
 #include "ast.hpp"
-#include "context.hpp"
+#include "symtab.hpp"
 #include "value.hpp"
 #include <memory>
 #include <string>
@@ -18,7 +18,7 @@ struct ReturnException : public std::exception {
 class Interpreter : public ast::ASTVisitor {
 public:
     Interpreter()
-        : ctx_(std::make_shared<Context>()),
+        : ctx_(std::make_shared<ValueScope>()),
           global_ctx_(ctx_) {}
     ~Interpreter() override = default;
 
@@ -46,9 +46,11 @@ public:
     void visit(ast::ReturnStmt& node) override;
 
 private:
+    using ValueScope = Scope<Value>;
+
     Value result_;
-    std::shared_ptr<Context> ctx_;
-    std::shared_ptr<Context> global_ctx_;
+    std::shared_ptr<ValueScope> ctx_;
+    std::shared_ptr<ValueScope> global_ctx_;
 
     Value evaluate(ast::Expr& expr);
     Value applyArithmetic(const Value& lhs, const Value& rhs, std::string_view op);
