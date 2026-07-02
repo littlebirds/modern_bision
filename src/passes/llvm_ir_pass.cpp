@@ -189,7 +189,7 @@ void LLVMGen::visit(ast::BinOpExpr& n) {
             auto* trapBB = llvm::BasicBlock::Create(*ctx_, "div.trap", curFn_);
             bld_->CreateCondBr(isZero, trapBB, okBB);
             bld_->SetInsertPoint(trapBB);
-            auto* trapFn = llvm::Intrinsic::getOrInsertDeclaration(mod_, llvm::Intrinsic::trap);
+            auto* trapFn = llvm::Intrinsic::getDeclaration(mod_, llvm::Intrinsic::trap);
             bld_->CreateCall(trapFn);
             bld_->CreateUnreachable();
             bld_->SetInsertPoint(okBB);
@@ -203,7 +203,7 @@ void LLVMGen::visit(ast::BinOpExpr& n) {
             l = bld_->CreateSIToFP(l, llvm::Type::getDoubleTy(*ctx_));
             r = bld_->CreateSIToFP(r, llvm::Type::getDoubleTy(*ctx_));
         }
-        auto* powFn = llvm::Intrinsic::getOrInsertDeclaration(
+        auto* powFn = llvm::Intrinsic::getDeclaration(
             mod_, llvm::Intrinsic::pow, {llvm::Type::getDoubleTy(*ctx_)});
         auto* result = bld_->CreateCall(powFn, {l, r}, "powtmp");
         if (!fp) val_ = bld_->CreateFPToSI(result, llvm::Type::getInt64Ty(*ctx_));
