@@ -11,6 +11,8 @@ namespace {
 struct SemanticSym {
     TypeId type = TYPE_UNKNOWN;
     TypeId returnType = TYPE_UNKNOWN; // for function symbols: the return type
+    std::vector<std::string> parameterNames;
+    std::vector<TypeId> parameterTypes;
     bool isMutable = true;
     bool isFunction = false;
 };
@@ -77,8 +79,21 @@ public:
             throw std::runtime_error("Cannot use type name '" + node.ident + "' as identifier");
         TypeId t = resolveType(*node.value);
         // If the value is a function literal, record it as a function symbol with its return type
-        bool isFn = dynamic_cast<ast::FnLitExpr*>(node.value.get()) != nullptr;
-        scope_->define(node.ident, SemanticSym{t, isFn ? t : TYPE_UNKNOWN, true, isFn});
+        auto* fn = dynamic_cast<ast::FnLitExpr*>(node.value.get());
+        bool isFn = fn != nullptr;
+        std::vector<std::string> parameterNames;
+        std::vector<TypeId> parameterTypes;
+        if (isFn) {
+            parameterNames.reserve(fn->params.size());
+            parameterTypes.reserve(fn->params.size());
+            for (const auto& [name, typeName] : fn->params) {
+                parameterNames.push_back(name);
+                parameterTypes.push_back(TypeTable::resolveTypeName(typeName));
+            }
+        }
+        scope_->define(node.ident,
+            SemanticSym{t, isFn ? t : TYPE_UNKNOWN,
+                        std::move(parameterNames), std::move(parameterTypes), true, isFn});
         curType_ = t;
         node.setAnnotation(SemanticInfo{curType_});
     }
@@ -97,11 +112,26 @@ public:
         for (auto& [name, tn] : node.params)
             ptids.push_back(TypeTable::resolveTypeName(tn));
         TypeId retTid = node.returnType ? TypeTable::resolveTypeName(*node.returnType) : TYPE_UNKNOWN;
+        TypeId enclosingReturnType = declaredReturnType_;
+        declaredReturnType_ = retTid;
         enterScope();
         for (size_t i = 0; i < node.params.size(); ++i)
-            scope_->define(node.params[i].first, SemanticSym{ptids[i], TYPE_UNKNOWN, true, false});
+            scope_->define(node.params[i].first,
+                SemanticSym{ptids[i], TYPE_UNKNOWN, {}, {}, true, false});
+        curType_ = TYPE_UNKNOWN;
         node.body->accept(*this);
+        TypeId bodyType = curType_;
         exitScope();
+        declaredReturnType_ = enclosingReturnType;
+
+        // A trailing expression is the function's implicit return value. Explicit
+        // return statements are checked in visit(ReturnStmt&).
+        if (retTid != TYPE_UNKNOWN && !node.body->stmtList->statements.empty() &&
+            dynamic_cast<ast::ExprStmt*>(node.body->stmtList->statements.back().get()) &&
+            bodyType != TYPE_UNKNOWN && bodyType != retTid) {
+            throwReturnTypeMismatch(retTid, bodyType);
+        }
+
         // The function literal itself carries its return type for callers to use.
         curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});
@@ -109,15 +139,53 @@ public:
 
     void visit(ast::CallExpr& node) override {
         resolveType(*node.callee);
-        if (node.arguments) for (auto& a : node.arguments->exprs) resolveType(*a);
-        // Try to resolve the callee's return type from the scope
+
+        const size_t actualCount = node.arguments ? node.arguments->exprs.size() : 0;
+        std::optional<size_t> expectedCount;
+        std::vector<std::string> parameterNames;
+        std::vector<TypeId> parameterTypes;
+
+        // Resolve function metadata for named and immediately-invoked functions.
         TypeId retTid = TYPE_UNKNOWN;
         if (auto* ident = dynamic_cast<ast::IdentExpr*>(node.callee.get())) {
             const auto* sym = scope_->resolve(ident->name);
             if (sym && sym->isFunction) {
                 retTid = sym->returnType;
+                parameterNames = sym->parameterNames;
+                parameterTypes = sym->parameterTypes;
+                expectedCount = parameterTypes.size();
+            }
+        } else if (auto* fn = dynamic_cast<ast::FnLitExpr*>(node.callee.get())) {
+            expectedCount = fn->params.size();
+            parameterNames.reserve(fn->params.size());
+            parameterTypes.reserve(fn->params.size());
+            for (const auto& [name, typeName] : fn->params) {
+                parameterNames.push_back(name);
+                parameterTypes.push_back(TypeTable::resolveTypeName(typeName));
+            }
+            retTid = fn->returnType
+                ? TypeTable::resolveTypeName(*fn->returnType)
+                : TYPE_UNKNOWN;
+        }
+
+        if (expectedCount && actualCount != *expectedCount) {
+            throw std::runtime_error(
+                "Function expects " + std::to_string(*expectedCount) +
+                " arguments but got " + std::to_string(actualCount));
+        }
+
+        if (node.arguments) {
+            for (size_t i = 0; i < node.arguments->exprs.size(); ++i) {
+                TypeId actualType = resolveType(*node.arguments->exprs[i]);
+                if (i < parameterTypes.size() && actualType != parameterTypes[i]) {
+                    throw std::runtime_error(
+                        "Argument " + std::to_string(i) + " (" + parameterNames[i] +
+                        ") expected type " + TypeTable::instance().getTypeName(parameterTypes[i]) +
+                        " but got " + TypeTable::instance().getTypeName(actualType));
+                }
             }
         }
+
         curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});
     }
@@ -152,14 +220,27 @@ public:
     void visit(ast::StmtList& node) override {
         for (auto& s : node.statements) s->accept(*this); }
     void visit(ast::ReturnStmt& node) override {
-        if (node.value) resolveType(*node.value); }
+        if (node.value) {
+            TypeId actualType = resolveType(*node.value);
+            if (declaredReturnType_ != TYPE_UNKNOWN && actualType != TYPE_UNKNOWN &&
+                actualType != declaredReturnType_)
+                throwReturnTypeMismatch(declaredReturnType_, actualType);
+        }
+    }
 
 private:
     using SemScope = Scope<SemanticSym>;
     std::shared_ptr<SemScope> scope_;
     TypeId curType_ = TYPE_UNKNOWN;
+    TypeId declaredReturnType_ = TYPE_UNKNOWN;
     void enterScope() { scope_ = std::make_shared<SemScope>(scope_); }
     void exitScope() { scope_ = scope_->parent(); }
+    [[noreturn]] void throwReturnTypeMismatch(TypeId declaredType, TypeId actualType) {
+        throw std::runtime_error(
+            "Function declared return type " +
+            TypeTable::instance().getTypeName(declaredType) +
+            " but returned " + TypeTable::instance().getTypeName(actualType));
+    }
 };
 
 } // anon namespace
