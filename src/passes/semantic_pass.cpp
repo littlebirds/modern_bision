@@ -11,7 +11,8 @@ namespace {
 struct SemanticSym {
     TypeId type = TYPE_UNKNOWN;
     TypeId returnType = TYPE_UNKNOWN; // for function symbols: the return type
-    size_t parameterCount = 0;
+    std::vector<std::string> parameterNames;
+    std::vector<TypeId> parameterTypes;
     bool isMutable = true;
     bool isFunction = false;
 };
@@ -80,9 +81,19 @@ public:
         // If the value is a function literal, record it as a function symbol with its return type
         auto* fn = dynamic_cast<ast::FnLitExpr*>(node.value.get());
         bool isFn = fn != nullptr;
-        size_t parameterCount = isFn ? fn->params.size() : 0;
+        std::vector<std::string> parameterNames;
+        std::vector<TypeId> parameterTypes;
+        if (isFn) {
+            parameterNames.reserve(fn->params.size());
+            parameterTypes.reserve(fn->params.size());
+            for (const auto& [name, typeName] : fn->params) {
+                parameterNames.push_back(name);
+                parameterTypes.push_back(TypeTable::resolveTypeName(typeName));
+            }
+        }
         scope_->define(node.ident,
-            SemanticSym{t, isFn ? t : TYPE_UNKNOWN, parameterCount, true, isFn});
+            SemanticSym{t, isFn ? t : TYPE_UNKNOWN,
+                        std::move(parameterNames), std::move(parameterTypes), true, isFn});
         curType_ = t;
         node.setAnnotation(SemanticInfo{curType_});
     }
@@ -104,7 +115,7 @@ public:
         enterScope();
         for (size_t i = 0; i < node.params.size(); ++i)
             scope_->define(node.params[i].first,
-                SemanticSym{ptids[i], TYPE_UNKNOWN, 0, true, false});
+                SemanticSym{ptids[i], TYPE_UNKNOWN, {}, {}, true, false});
         node.body->accept(*this);
         exitScope();
         // The function literal itself carries its return type for callers to use.
@@ -117,6 +128,8 @@ public:
 
         const size_t actualCount = node.arguments ? node.arguments->exprs.size() : 0;
         std::optional<size_t> expectedCount;
+        std::vector<std::string> parameterNames;
+        std::vector<TypeId> parameterTypes;
 
         // Resolve function metadata for named and immediately-invoked functions.
         TypeId retTid = TYPE_UNKNOWN;
@@ -124,10 +137,18 @@ public:
             const auto* sym = scope_->resolve(ident->name);
             if (sym && sym->isFunction) {
                 retTid = sym->returnType;
-                expectedCount = sym->parameterCount;
+                parameterNames = sym->parameterNames;
+                parameterTypes = sym->parameterTypes;
+                expectedCount = parameterTypes.size();
             }
         } else if (auto* fn = dynamic_cast<ast::FnLitExpr*>(node.callee.get())) {
             expectedCount = fn->params.size();
+            parameterNames.reserve(fn->params.size());
+            parameterTypes.reserve(fn->params.size());
+            for (const auto& [name, typeName] : fn->params) {
+                parameterNames.push_back(name);
+                parameterTypes.push_back(TypeTable::resolveTypeName(typeName));
+            }
             retTid = fn->returnType
                 ? TypeTable::resolveTypeName(*fn->returnType)
                 : TYPE_UNKNOWN;
@@ -139,9 +160,17 @@ public:
                 " arguments but got " + std::to_string(actualCount));
         }
 
-        if (node.arguments)
-            for (auto& argument : node.arguments->exprs)
-                resolveType(*argument);
+        if (node.arguments) {
+            for (size_t i = 0; i < node.arguments->exprs.size(); ++i) {
+                TypeId actualType = resolveType(*node.arguments->exprs[i]);
+                if (i < parameterTypes.size() && actualType != parameterTypes[i]) {
+                    throw std::runtime_error(
+                        "Argument " + std::to_string(i) + " (" + parameterNames[i] +
+                        ") expected type " + TypeTable::instance().getTypeName(parameterTypes[i]) +
+                        " but got " + TypeTable::instance().getTypeName(actualType));
+                }
+            }
+        }
 
         curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});

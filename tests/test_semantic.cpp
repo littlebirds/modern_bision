@@ -54,3 +54,23 @@ TEST_CASE("Semantic analysis: validates immediate function invocation arity", "[
         analyze("fn(value int) int { value; }();"),
         "Function expects 1 arguments but got 0");
 }
+
+TEST_CASE("Semantic analysis: accepts matching function argument types", "[semantic][function]") {
+    CHECK_NOTHROW(analyze(
+        "let convert = fn(count int, ratio float, enabled bool, label string) int { count; };"
+        "convert(2, 0.5, true, \"ready\");"));
+}
+
+TEST_CASE("Semantic analysis: rejects a mismatched function argument type", "[semantic][function]") {
+    CHECK_THROWS_WITH(
+        analyze(
+            "let add = fn(a int, b int) int { a + b; };"
+            "add(1, false);"),
+        "Argument 1 (b) expected type int but got bool");
+}
+
+TEST_CASE("Semantic analysis: validates immediate invocation argument types", "[semantic][function]") {
+    CHECK_THROWS_WITH(
+        analyze("fn(value float) float { value; }(\"wrong\");"),
+        "Argument 0 (value) expected type float but got string");
+}
