@@ -7,7 +7,7 @@ A task is complete when its acceptance criterion is covered by a passing test.
 
 | ID | Priority | Task | Status | Acceptance criterion |
 |---|---|---|---|---|
-| SEM-001 | High | Validate function argument count | Todo | A call with too few or too many arguments fails during compilation. |
+| SEM-001 | High | Validate function argument count | Done | A call with too few or too many arguments fails during compilation. |
 | SEM-002 | High | Validate function argument types | Todo | A call whose argument type differs from the parameter type fails during compilation. |
 | SEM-003 | High | Validate declared return types | Todo | A function returning a value with a different type from its declaration fails during compilation. |
 | SEM-004 | High | Validate callable targets | Todo | Calling a non-function value fails during compilation. |
