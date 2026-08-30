@@ -112,12 +112,26 @@ public:
         for (auto& [name, tn] : node.params)
             ptids.push_back(TypeTable::resolveTypeName(tn));
         TypeId retTid = node.returnType ? TypeTable::resolveTypeName(*node.returnType) : TYPE_UNKNOWN;
+        TypeId enclosingReturnType = declaredReturnType_;
+        declaredReturnType_ = retTid;
         enterScope();
         for (size_t i = 0; i < node.params.size(); ++i)
             scope_->define(node.params[i].first,
                 SemanticSym{ptids[i], TYPE_UNKNOWN, {}, {}, true, false});
+        curType_ = TYPE_UNKNOWN;
         node.body->accept(*this);
+        TypeId bodyType = curType_;
         exitScope();
+        declaredReturnType_ = enclosingReturnType;
+
+        // A trailing expression is the function's implicit return value. Explicit
+        // return statements are checked in visit(ReturnStmt&).
+        if (retTid != TYPE_UNKNOWN && !node.body->stmtList->statements.empty() &&
+            dynamic_cast<ast::ExprStmt*>(node.body->stmtList->statements.back().get()) &&
+            bodyType != TYPE_UNKNOWN && bodyType != retTid) {
+            throwReturnTypeMismatch(retTid, bodyType);
+        }
+
         // The function literal itself carries its return type for callers to use.
         curType_ = retTid;
         node.setAnnotation(SemanticInfo{curType_});
@@ -206,14 +220,27 @@ public:
     void visit(ast::StmtList& node) override {
         for (auto& s : node.statements) s->accept(*this); }
     void visit(ast::ReturnStmt& node) override {
-        if (node.value) resolveType(*node.value); }
+        if (node.value) {
+            TypeId actualType = resolveType(*node.value);
+            if (declaredReturnType_ != TYPE_UNKNOWN && actualType != TYPE_UNKNOWN &&
+                actualType != declaredReturnType_)
+                throwReturnTypeMismatch(declaredReturnType_, actualType);
+        }
+    }
 
 private:
     using SemScope = Scope<SemanticSym>;
     std::shared_ptr<SemScope> scope_;
     TypeId curType_ = TYPE_UNKNOWN;
+    TypeId declaredReturnType_ = TYPE_UNKNOWN;
     void enterScope() { scope_ = std::make_shared<SemScope>(scope_); }
     void exitScope() { scope_ = scope_->parent(); }
+    [[noreturn]] void throwReturnTypeMismatch(TypeId declaredType, TypeId actualType) {
+        throw std::runtime_error(
+            "Function declared return type " +
+            TypeTable::instance().getTypeName(declaredType) +
+            " but returned " + TypeTable::instance().getTypeName(actualType));
+    }
 };
 
 } // anon namespace

@@ -74,3 +74,29 @@ TEST_CASE("Semantic analysis: validates immediate invocation argument types", "[
         analyze("fn(value float) float { value; }(\"wrong\");"),
         "Argument 0 (value) expected type float but got string");
 }
+
+TEST_CASE("Semantic analysis: accepts a matching declared return type", "[semantic][function][return]") {
+    CHECK_NOTHROW(analyze("let increment = fn(value int) int { value + 1; };"));
+    CHECK_NOTHROW(analyze("let positive = fn(value int) bool { return value > 0; };"));
+    CHECK_NOTHROW(analyze(
+        "let outer = fn() bool {"
+        "  let inner = fn() int { return 1; };"
+        "  return true;"
+        "};"));
+}
+
+TEST_CASE("Semantic analysis: rejects a mismatched implicit return type", "[semantic][function][return]") {
+    CHECK_THROWS_WITH(
+        analyze("let increment = fn(value int) bool { value + 1; };"),
+        "Function declared return type bool but returned int");
+}
+
+TEST_CASE("Semantic analysis: rejects a mismatched explicit return type", "[semantic][function][return]") {
+    CHECK_THROWS_WITH(
+        analyze("let label = fn() string { return false; };"),
+        "Function declared return type string but returned bool");
+}
+
+TEST_CASE("Semantic analysis: does not validate inferred return types", "[semantic][function][return]") {
+    CHECK_NOTHROW(analyze("let identity = fn(value int) { value; };"));
+}
