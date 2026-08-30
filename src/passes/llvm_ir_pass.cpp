@@ -6,6 +6,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/Config/llvm-config.h>
 #include <stdexcept>
 
 using ast::SemanticInfo;
@@ -21,6 +22,12 @@ struct Sym {
 };
 
 static llvm::Type* toLLVMType(TypeId tid, llvm::LLVMContext& ctx) {
+    if (const auto* arrayType = TypeTable::instance().getArrayType(tid)) {
+        llvm::Type* elementType = arrayType->element_tid == TYPE_UNKNOWN
+            ? llvm::Type::getInt8Ty(ctx)
+            : toLLVMType(arrayType->element_tid, ctx);
+        return llvm::ArrayType::get(elementType, arrayType->length);
+    }
     switch (tid) {
         case TYPE_INT:    return llvm::Type::getInt64Ty(ctx);
         case TYPE_FLOAT:  return llvm::Type::getDoubleTy(ctx);
@@ -62,8 +69,8 @@ public:
     void visit(ast::AssignExpr& n) override;
     void visit(ast::FnLitExpr& n) override;
     void visit(ast::CallExpr& n) override;
-    void visit(ast::ArrayExpr&) override { throw std::runtime_error("arrays TBD"); }
-    void visit(ast::ArrayDerefExpr&) override { throw std::runtime_error("deref TBD"); }
+    void visit(ast::ArrayExpr& n) override;
+    void visit(ast::ArrayDerefExpr& n) override;
     void visit(ast::ExprSeq& n) override { for (auto& e : n.exprs) e->accept(*this); }
 
     void visit(ast::ExprStmt& n) override   { n.expression->accept(*this); }
@@ -86,6 +93,11 @@ private:
     int fnNameCounter_ = 0;
 
     llvm::Value* visitExpr(ast::Expr& e) { e.accept(*this); return val_; }
+    TypeId semanticType(ast::Node& n) {
+        auto* info = n.getAnnotation<SemanticInfo>();
+        if (!info) throw std::runtime_error("Missing semantic type annotation");
+        return info->type;
+    }
     const Sym* resolve(const std::string& n) {
         auto* s = scope_->resolve(n); if (!s) throw std::runtime_error("Undefined: " + n); return s;
     }
@@ -131,7 +143,7 @@ void LLVMGen::finishFn(TypeId retTid) {
             bld_->CreateRetVoid();
         } else if (retAlloca_) {
             // Store the last expression value as implicit return
-            if (val_ && !val_->getType()->isVoidTy())
+            if (val_ && val_->getType() == toLLVMType(retTid, *ctx_))
                 bld_->CreateStore(val_, retAlloca_);
             bld_->CreateBr(retBlock_);
         }
@@ -189,7 +201,11 @@ void LLVMGen::visit(ast::BinOpExpr& n) {
             auto* trapBB = llvm::BasicBlock::Create(*ctx_, "div.trap", curFn_);
             bld_->CreateCondBr(isZero, trapBB, okBB);
             bld_->SetInsertPoint(trapBB);
+#if LLVM_VERSION_MAJOR >= 22
+            auto* trapFn = llvm::Intrinsic::getOrInsertDeclaration(mod_, llvm::Intrinsic::trap);
+#else
             auto* trapFn = llvm::Intrinsic::getDeclaration(mod_, llvm::Intrinsic::trap);
+#endif
             bld_->CreateCall(trapFn);
             bld_->CreateUnreachable();
             bld_->SetInsertPoint(okBB);
@@ -203,8 +219,13 @@ void LLVMGen::visit(ast::BinOpExpr& n) {
             l = bld_->CreateSIToFP(l, llvm::Type::getDoubleTy(*ctx_));
             r = bld_->CreateSIToFP(r, llvm::Type::getDoubleTy(*ctx_));
         }
+#if LLVM_VERSION_MAJOR >= 22
+        auto* powFn = llvm::Intrinsic::getOrInsertDeclaration(
+            mod_, llvm::Intrinsic::pow, {llvm::Type::getDoubleTy(*ctx_)});
+#else
         auto* powFn = llvm::Intrinsic::getDeclaration(
             mod_, llvm::Intrinsic::pow, {llvm::Type::getDoubleTy(*ctx_)});
+#endif
         auto* result = bld_->CreateCall(powFn, {l, r}, "powtmp");
         if (!fp) val_ = bld_->CreateFPToSI(result, llvm::Type::getInt64Ty(*ctx_));
         else     val_ = result;
@@ -227,12 +248,58 @@ void LLVMGen::visit(ast::LetExpr& n) {
     auto* v = visitExpr(*n.value);
     auto* a = entryAlloca(v->getType(), n.ident);
     bld_->CreateStore(v, a);
-    TypeId tid = TYPE_INT;
-    if (v->getType()->isIntegerTy(64)) tid = TYPE_INT;
-    else if (v->getType()->isDoubleTy()) tid = TYPE_FLOAT;
-    else if (v->getType()->isIntegerTy(1)) tid = TYPE_BOOL;
+    TypeId tid = semanticType(*n.value);
     scope_->define(n.ident, Sym{tid, a, nullptr, true});
     val_ = v;
+}
+
+void LLVMGen::visit(ast::ArrayExpr& n) {
+    TypeId arrayTypeId = semanticType(n);
+    auto* arrayType = llvm::cast<llvm::ArrayType>(toLLVMType(arrayTypeId, *ctx_));
+    llvm::Value* arrayValue = llvm::UndefValue::get(arrayType);
+
+    for (size_t i = 0; i < n.expr_seq->exprs.size(); ++i) {
+        auto* element = visitExpr(*n.expr_seq->exprs[i]);
+        arrayValue = bld_->CreateInsertValue(arrayValue, element, {static_cast<unsigned>(i)}, "arraytmp");
+    }
+
+    val_ = arrayValue;
+}
+
+void LLVMGen::visit(ast::ArrayDerefExpr& n) {
+    TypeId targetTypeId = semanticType(*n.target);
+    const auto* arrayInfo = TypeTable::instance().getArrayType(targetTypeId);
+    if (!arrayInfo) throw std::runtime_error("Cannot index non-array value");
+
+    auto* arrayValue = visitExpr(*n.target);
+    auto* indexValue = visitExpr(*n.index);
+    auto* zero = llvm::ConstantInt::get(indexValue->getType(), 0);
+    auto* length = llvm::ConstantInt::get(indexValue->getType(), arrayInfo->length);
+    auto* nonNegative = bld_->CreateICmpSGE(indexValue, zero, "index.nonnegative");
+    auto* belowLength = bld_->CreateICmpULT(indexValue, length, "index.below_length");
+    auto* inRange = bld_->CreateAnd(nonNegative, belowLength, "index.in_range");
+
+    auto* validBlock = llvm::BasicBlock::Create(*ctx_, "index.valid", curFn_);
+    auto* invalidBlock = llvm::BasicBlock::Create(*ctx_, "index.out_of_bounds", curFn_);
+    bld_->CreateCondBr(inRange, validBlock, invalidBlock);
+
+    bld_->SetInsertPoint(invalidBlock);
+#if LLVM_VERSION_MAJOR >= 22
+    auto* trapFn = llvm::Intrinsic::getOrInsertDeclaration(mod_, llvm::Intrinsic::trap);
+#else
+    auto* trapFn = llvm::Intrinsic::getDeclaration(mod_, llvm::Intrinsic::trap);
+#endif
+    bld_->CreateCall(trapFn);
+    bld_->CreateUnreachable();
+
+    bld_->SetInsertPoint(validBlock);
+    auto* arrayType = llvm::cast<llvm::ArrayType>(toLLVMType(targetTypeId, *ctx_));
+    auto* arraySlot = entryAlloca(arrayType, "array.index.target");
+    bld_->CreateStore(arrayValue, arraySlot);
+    auto* elementPointer = bld_->CreateInBoundsGEP(
+        arrayType, arraySlot, {zero, indexValue}, "array.element.ptr");
+    val_ = bld_->CreateLoad(
+        toLLVMType(arrayInfo->element_tid, *ctx_), elementPointer, "array.element");
 }
 
 void LLVMGen::visit(ast::AssignExpr& n) {
