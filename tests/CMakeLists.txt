@@ -3,10 +3,12 @@ add_executable(test_runner
     test_parser.cpp
     test_interpreter.cpp
     test_semantic.cpp
+    test_llvm_ir.cpp
     ${CMAKE_SOURCE_DIR}/src/ast.cpp
     ${CMAKE_SOURCE_DIR}/src/pretty_printer.cpp
     ${CMAKE_SOURCE_DIR}/src/interpreter.cpp
     ${CMAKE_SOURCE_DIR}/src/passes/semantic_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/passes/llvm_ir_pass.cpp
     ${CMAKE_BINARY_DIR}/Parser.cpp
     ${CMAKE_BINARY_DIR}/Scanner.cpp
 )

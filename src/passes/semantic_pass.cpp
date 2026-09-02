@@ -1,6 +1,7 @@
 #include "passes/semantic_pass.hpp"
 #include "ast_visitor.hpp"
 #include "symtab.hpp"
+#include <optional>
 #include <stdexcept>
 
 using ast::SemanticInfo;
@@ -191,12 +192,40 @@ public:
     }
 
     void visit(ast::ArrayExpr& node) override {
-        throw std::runtime_error("[" + std::to_string(node.loc.begin.line) + ":"
-            + std::to_string(node.loc.begin.column) + "] Array literals are not supported in compiled mode");
+        TypeId elementType = TYPE_UNKNOWN;
+        for (auto& element : node.expr_seq->exprs) {
+            TypeId currentType = resolveType(*element);
+            if (elementType == TYPE_UNKNOWN)
+                elementType = currentType;
+            else if (currentType != elementType)
+                throw std::runtime_error("Array elements must all have the same type");
+        }
+
+        curType_ = TypeTable::instance().getArrayTypeId(
+            elementType, node.expr_seq->exprs.size());
+        node.setAnnotation(SemanticInfo{curType_});
     }
+
     void visit(ast::ArrayDerefExpr& node) override {
-        throw std::runtime_error("[" + std::to_string(node.loc.begin.line) + ":"
-            + std::to_string(node.loc.begin.column) + "] Array indexing is not supported in compiled mode");
+        TypeId targetType = resolveType(*node.target);
+        const auto* resolvedArrayType = TypeTable::instance().getArrayType(targetType);
+        if (!resolvedArrayType)
+            throw std::runtime_error("Cannot index non-array value");
+        ArrayType arrayType = *resolvedArrayType;
+
+        TypeId indexType = resolveType(*node.index);
+        if (indexType != TYPE_INT)
+            throw std::runtime_error("Array index must be an integer");
+
+        if (auto index = constantInteger(*node.index);
+            index && (*index < 0 || static_cast<size_t>(*index) >= arrayType.length)) {
+            throw std::runtime_error(
+                "Array index out of bounds: index " + std::to_string(*index) +
+                " for array of length " + std::to_string(arrayType.length));
+        }
+
+        curType_ = arrayType.element_tid;
+        node.setAnnotation(SemanticInfo{curType_});
     }
     void visit(ast::ExprSeq& node) override {
         for (auto& e : node.exprs) resolveType(*e); }
@@ -235,6 +264,16 @@ private:
     TypeId declaredReturnType_ = TYPE_UNKNOWN;
     void enterScope() { scope_ = std::make_shared<SemScope>(scope_); }
     void exitScope() { scope_ = scope_->parent(); }
+    std::optional<int64_t> constantInteger(ast::Expr& expression) {
+        if (auto* literal = dynamic_cast<ast::IntLitExpr*>(&expression))
+            return std::stoll(literal->literal);
+        if (auto* unary = dynamic_cast<ast::UnaryExpr*>(&expression);
+            unary && unary->prefix == std::string_view("-")) {
+            if (auto* literal = dynamic_cast<ast::IntLitExpr*>(unary->operand.get()))
+                return -std::stoll(literal->literal);
+        }
+        return std::nullopt;
+    }
     [[noreturn]] void throwReturnTypeMismatch(TypeId declaredType, TypeId actualType) {
         throw std::runtime_error(
             "Function declared return type " +

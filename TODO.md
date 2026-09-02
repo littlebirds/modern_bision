@@ -21,8 +21,8 @@ A task is complete when its acceptance criterion is covered by a passing test.
 
 | ID | Priority | Task | Status | Acceptance criterion |
 |---|---|---|---|---|
-| BACK-001 | High | Support arrays in compiled mode | Todo | A valid array literal compiles to LLVM IR without the current unsupported error. |
-| BACK-002 | High | Support array indexing | Todo | Valid array indexing compiles and invalid indexes produce a clear error. |
+| BACK-001 | High | Support arrays in compiled mode | Done | A valid array literal compiles to LLVM IR without the current unsupported error. |
+| BACK-002 | High | Support array indexing | Done | Valid array indexing compiles and invalid indexes produce a clear error. |
 | BACK-003 | Medium | Support higher-order calls | Todo | A function value can be passed to and called by another compiled function. |
 | BACK-004 | Medium | Implement `if` expressions | Todo | Both branches contribute a value through an LLVM phi node. |
 | BACK-005 | Low | Remove dead return blocks | Todo | Generated functions do not contain unused return blocks. |

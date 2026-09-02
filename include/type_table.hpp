@@ -107,6 +107,11 @@ public:
         return newId;
     }
 
+    const ArrayType* getArrayType(TypeId tid) const {
+        auto it = arrayTypes_.find(tid);
+        return it == arrayTypes_.end() ? nullptr : &it->second;
+    }
+
     TypeId getFunctionTypeId(const std::vector<TypeId>& paramTids, TypeId returnTid) {
         for (const auto& [key, val] : functionTypes_) {
             if (val.param_tids == paramTids && val.return_tid == returnTid) {
