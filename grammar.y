@@ -1,6 +1,7 @@
 %{
 #include <iostream>
 #include <string>
+#include <stdexcept>
 #include <cmath>
 #include <FlexLexer.h>
 %}
@@ -57,7 +58,6 @@
 %nterm <std::string>                            type_name
 %nterm <std::pair<std::string, std::string>>    typed_param
 %nterm <std::vector<std::pair<std::string, std::string>>*>  typed_param_list
-%nterm <std::optional<std::string>>             opt_return_type
 %nterm                                                          program
 
 %nonassoc             ASSIGN
@@ -105,16 +105,13 @@ typed_param_list : %empty                           { $$ = new std::vector<std::
         | typed_param_list COMMA typed_param        { $1->push_back($3); $$ = $1; }
         ;
 
-opt_return_type : %empty                            { $$ = std::nullopt; }
-        | type_name                                 { $$ = std::make_optional($1); }
-        ;
-
 stmt    : expr SEMICOLON                            { $$ = new ast::ExprStmt(@$, $1); }        
         | Ident ASSIGN expr SEMICOLON               { $$ = new ast::ExprStmt(@$, new ast::AssignExpr(@$, $1, $3)); }
         | block_stmt                                { $$ = $1; }
         | if_stmt                                   { $$ = $1; }
         | while_stmt                                { $$ = $1; }
         | RETURN expr SEMICOLON                     { $$ = new ast::ReturnStmt(@$, $2); }
+        | RETURN SEMICOLON                          { $$ = new ast::ReturnStmt(@$, nullptr); }
         | error SEMICOLON                           { yyerrok; }
         ;
 
@@ -154,7 +151,12 @@ expr    : LIT_INT                                   { $$ = new ast::IntLitExpr(@
         | LET Ident ASSIGN expr                     { $$ = new ast::LetExpr(@$, $2, $4); }  
         | Ident                                     { $$ = new ast::IdentExpr(@$, $1); }
         | LPAREN expr RPAREN                        { $$ = $2; }
-        | FUNCTION LPAREN typed_param_list RPAREN opt_return_type block_stmt { $$ = new ast::FnLitExpr(@$, $3, $5, $6); }
+        | FUNCTION LPAREN typed_param_list RPAREN type_name block_stmt { $$ = new ast::FnLitExpr(@$, $3, $5, $6); }
+        | FUNCTION LPAREN typed_param_list RPAREN block_stmt {
+              delete $3;
+              delete $5;
+              throw std::runtime_error("Function return type is required");
+          }
         | expr LPAREN expr_seq RPAREN %prec CALL    { $$ = new ast::CallExpr(@$, $1, $3); }
         ;
  

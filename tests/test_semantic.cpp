@@ -97,6 +97,25 @@ TEST_CASE("Semantic analysis: rejects a mismatched explicit return type", "[sema
         "Function declared return type string but returned bool");
 }
 
-TEST_CASE("Semantic analysis: does not validate inferred return types", "[semantic][function][return]") {
-    CHECK_NOTHROW(analyze("let identity = fn(value int) { value; };"));
+TEST_CASE("Semantic analysis: function return type is required", "[semantic][function][return]") {
+    CHECK_THROWS_WITH(
+        analyze("let identity = fn(value int) { value; };"),
+        "Function return type is required");
+}
+
+TEST_CASE("Semantic analysis: accepts void returns", "[semantic][function][return][void]") {
+    CHECK_NOTHROW(analyze("let noop = fn() void { return; }; noop();"));
+    CHECK_NOTHROW(analyze("let noop = fn() void { }; noop();"));
+}
+
+TEST_CASE("Semantic analysis: rejects a value returned from void function", "[semantic][function][return][void]") {
+    CHECK_THROWS_WITH(
+        analyze("let invalid = fn() void { return 1; };"),
+        "Function declared return type void but returned int");
+}
+
+TEST_CASE("Semantic analysis: rejects empty return from value function", "[semantic][function][return][void]") {
+    CHECK_THROWS_WITH(
+        analyze("let invalid = fn() int { return; };"),
+        "Function declared return type int but returned void");
 }

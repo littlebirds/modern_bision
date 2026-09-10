@@ -28,6 +28,12 @@ A task is complete when its acceptance criterion is covered by a passing test.
 | BACK-005 | Low | Remove dead return blocks | Todo | Generated functions do not contain unused return blocks. |
 | BACK-006 | Low | Add JIT execution mode | Todo | A command-line mode executes compiled LLVM code instead of only printing IR. |
 
+## Parser
+
+| ID | Priority | Task | Status | Acceptance criterion |
+|---|---|---|---|---|
+| PARSE-001 | Low | Use `std::unique_ptr` for Bison-owned AST semantic values | Todo | Parser productions and error paths transfer or release ownership automatically without manual `delete` calls. |
+
 ## Workflow
 
 - Keep source comments for local implementation notes only; track cross-cutting work here.

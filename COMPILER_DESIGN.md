@@ -36,6 +36,24 @@ interface, so the compiler is a **parallel implementation** — same visitor
 pattern, different `visit()` bodies that emit LLVM IR instead of computing
 `Value` results.
 
+### Function Return Types
+
+Every function literal must declare its return type after the parameter list:
+
+```monkey
+fn(value int) int { value; }
+```
+
+Return-type inference is not part of the language. Omitting the type is a parse
+error. Functions that do not return a value declare `void` and may use an empty
+return statement:
+
+```monkey
+fn() void { return; }
+```
+
+`void` is distinct from the runtime `null` value and cannot be used as a value.
+
 ### Active Record / Call Frame
 
 The interpreter gets "active records" for free from C++'s call stack — each
@@ -223,14 +241,55 @@ Currently `value_ = nullptr` at merge (if-expression support is a TODO).
 
 **WhileStmt** — three blocks (cond, body, exit). Loop body branches back to cond.
 
-**ReturnStmt** — stores value to `returnAlloca_`, branches to `returnBlock_`.
-If no return handling (void function), emits `CreateRet(val)` directly.
+**ReturnStmt** — value returns store into `returnAlloca_` and branch to
+`returnBlock_`; an empty return in a `void` function emits `CreateRetVoid()`.
 
 **Implicit return** — after compiling a function body, if the block has no
 terminator, checks `value_` (result of last expression), stores it to
 `returnAlloca_`, loads it back, emits `ret`.
 
-### 3.5 `main.cpp` — Compiler Mode (`-c`)
+### 3.5 Common LLVM IR Optimization Passes
+
+LLVM optimization normally runs after initial IR construction. SSA form makes
+the producer of each value explicit, which allows passes to propagate facts
+through uses, phi nodes, and control-flow edges.
+
+| Pass | Purpose | Useful concept to study |
+|---|---|---|
+| `mem2reg` | Promotes eligible stack slots created by `alloca` into SSA registers and inserts phi nodes | SSA construction and dominance frontiers |
+| `sroa` | Splits aggregate and scalar stack objects into independently optimizable values | Aggregate lowering and escape analysis |
+| `instcombine` | Folds constants and rewrites instruction patterns into canonical forms | Local algebraic simplification and LLVM poison/overflow rules |
+| `reassociate` | Reorders associative expressions to expose constants and common subexpressions | Expression trees and legal reassociation |
+| `sccp` | Propagates constants while discovering executable control-flow edges | Data-flow lattices and sparse conditional constant propagation |
+| `simplifycfg` | Folds constant branches and simplifies or removes redundant blocks | Control-flow graph transformations |
+| `gvn` | Eliminates redundant computations that produce an already-available value | Value numbering and dominance |
+| `licm` | Moves loop-invariant calculations outside loops when safe | Loop structure, alias analysis, and code motion |
+| `dce` / `adce` | Removes instructions whose results cannot affect observable behavior | Liveness and side effects |
+
+These passes cooperate. For example, `mem2reg` can expose an SSA constant,
+`sccp` can use it to prove that a branch is never taken, `simplifycfg` can
+remove that branch, and `adce` can delete the calculations that only fed the
+removed path. Optimization pipelines therefore run complementary passes in a
+deliberate order and may repeat canonicalization passes.
+
+A useful learning exercise is to save unoptimized IR and inspect it after each
+pass:
+
+```bash
+opt -S \
+  -passes='mem2reg,instcombine,sccp,simplifycfg,adce' \
+  input.ll -o optimized.ll
+```
+
+Start with small functions containing local variables, constant conditions,
+and loops. Compare each transformation with the SSA use-def chains and CFG.
+LLVM's `IRBuilder` already performs some immediate local constant folding, but
+the optimization pipeline handles facts that require broader data-flow and
+control-flow analysis. AST-level constant evaluation should remain reserved
+for language semantics and early diagnostics, such as detecting a statically
+out-of-bounds array index.
+
+### 3.6 `main.cpp` — Compiler Mode (`-c`)
 
 ```cpp
 if (strncmp(mode, "-c", 2) == 0) {
