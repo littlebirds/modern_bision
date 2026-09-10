@@ -79,8 +79,10 @@ public:
         if (TypeTable::isKnownTypeName(node.ident))
             throw std::runtime_error("Cannot use type name '" + node.ident + "' as identifier");
         TypeId t = resolveType(*node.value);
-        // If the value is a function literal, record it as a function symbol with its return type
         auto* fn = dynamic_cast<ast::FnLitExpr*>(node.value.get());
+        if (t == TYPE_VOID && !fn)
+            throw std::runtime_error("Cannot bind a void value");
+        // If the value is a function literal, record it as a function symbol with its return type
         bool isFn = fn != nullptr;
         std::vector<std::string> parameterNames;
         std::vector<TypeId> parameterTypes;
@@ -112,7 +114,7 @@ public:
         std::vector<TypeId> ptids;
         for (auto& [name, tn] : node.params)
             ptids.push_back(TypeTable::resolveTypeName(tn));
-        TypeId retTid = node.returnType ? TypeTable::resolveTypeName(*node.returnType) : TYPE_UNKNOWN;
+        TypeId retTid = TypeTable::resolveTypeName(node.returnType);
         TypeId enclosingReturnType = declaredReturnType_;
         declaredReturnType_ = retTid;
         enterScope();
@@ -127,7 +129,7 @@ public:
 
         // A trailing expression is the function's implicit return value. Explicit
         // return statements are checked in visit(ReturnStmt&).
-        if (retTid != TYPE_UNKNOWN && !node.body->stmtList->statements.empty() &&
+        if (retTid != TYPE_VOID && !node.body->stmtList->statements.empty() &&
             dynamic_cast<ast::ExprStmt*>(node.body->stmtList->statements.back().get()) &&
             bodyType != TYPE_UNKNOWN && bodyType != retTid) {
             throwReturnTypeMismatch(retTid, bodyType);
@@ -164,9 +166,7 @@ public:
                 parameterNames.push_back(name);
                 parameterTypes.push_back(TypeTable::resolveTypeName(typeName));
             }
-            retTid = fn->returnType
-                ? TypeTable::resolveTypeName(*fn->returnType)
-                : TYPE_UNKNOWN;
+            retTid = TypeTable::resolveTypeName(fn->returnType);
         }
 
         if (expectedCount && actualCount != *expectedCount) {
@@ -195,6 +195,8 @@ public:
         TypeId elementType = TYPE_UNKNOWN;
         for (auto& element : node.expr_seq->exprs) {
             TypeId currentType = resolveType(*element);
+            if (currentType == TYPE_VOID)
+                throw std::runtime_error("Cannot use a void value as an array element");
             if (elementType == TYPE_UNKNOWN)
                 elementType = currentType;
             else if (currentType != elementType)
@@ -249,12 +251,11 @@ public:
     void visit(ast::StmtList& node) override {
         for (auto& s : node.statements) s->accept(*this); }
     void visit(ast::ReturnStmt& node) override {
-        if (node.value) {
-            TypeId actualType = resolveType(*node.value);
-            if (declaredReturnType_ != TYPE_UNKNOWN && actualType != TYPE_UNKNOWN &&
-                actualType != declaredReturnType_)
-                throwReturnTypeMismatch(declaredReturnType_, actualType);
-        }
+        TypeId actualType = node.value ? resolveType(*node.value) : TYPE_VOID;
+        if (declaredReturnType_ != TYPE_UNKNOWN && actualType != TYPE_UNKNOWN &&
+            actualType != declaredReturnType_)
+            throwReturnTypeMismatch(declaredReturnType_, actualType);
+        curType_ = actualType;
     }
 
 private:

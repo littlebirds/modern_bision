@@ -318,10 +318,7 @@ void Interpreter::visit(ast::FnLitExpr& node) {
         paramTypeIds.push_back(TypeTable::resolveTypeName(typeName));
     }
 
-    TypeId declaredRetTid = TYPE_UNKNOWN;
-    if (node.returnType) {
-        declaredRetTid = TypeTable::resolveTypeName(*node.returnType);
-    }
+    TypeId declaredRetTid = TypeTable::resolveTypeName(node.returnType);
 
     auto fnObj = std::make_shared<FunctionObject>(
         std::move(paramNames), std::move(paramTypeIds),
@@ -330,7 +327,7 @@ void Interpreter::visit(ast::FnLitExpr& node) {
 }
 
 void Interpreter::visit(ast::ReturnStmt& node) {
-    Value val = evaluate(*node.value);
+    Value val = node.value ? evaluate(*node.value) : Value{};
     throw ReturnException(std::move(val));
 }
 
@@ -380,12 +377,16 @@ void Interpreter::visit(ast::CallExpr& node) {
     auto savedCtx = ctx_;
     ctx_ = fnCtx;
 
+    TypeId declaredRetTid = fnObj->declaredReturnTypeId();
+
     // Execute body, catching ReturnException
     Value returnVal;
     try {
         fnObj->body()->accept(*this);
-        // Implicit return: result_ holds the last evaluated value
-        returnVal = result_;
+        // Value-returning functions implicitly return the last expression.
+        // A void function always discards expression-statement results.
+        if (declaredRetTid != TYPE_VOID)
+            returnVal = result_;
     } catch (const ReturnException& ret) {
         returnVal = ret.value;
     }
@@ -395,30 +396,17 @@ void Interpreter::visit(ast::CallExpr& node) {
 
     // Validate return type
     TypeId retTid = returnVal.typeId();
-    TypeId declaredRetTid = fnObj->declaredReturnTypeId();
-
-    if (declaredRetTid != TYPE_UNKNOWN) {
-        // Declared return type: validate
-        if (retTid != declaredRetTid) {
-            throw std::runtime_error(
-                "Function declared return type " +
-                TypeTable::instance().getTypeName(declaredRetTid) +
-                " but returned " + TypeTable::instance().getTypeName(retTid));
-        }
-    } else {
-        // Inferred return type: set on first call, validate on subsequent
-        TypeId inferredTid = fnObj->inferredReturnTypeId();
-        if (inferredTid == TYPE_UNKNOWN) {
-            fnObj->setInferredReturnTypeId(retTid);
-        } else if (retTid != inferredTid) {
-            throw std::runtime_error(
-                "Function return type inferred as " +
-                TypeTable::instance().getTypeName(inferredTid) +
-                " but returned " + TypeTable::instance().getTypeName(retTid));
-        }
+    bool returnTypeMatches = declaredRetTid == TYPE_VOID
+        ? returnVal.isNull()
+        : retTid == declaredRetTid;
+    if (!returnTypeMatches) {
+        throw std::runtime_error(
+            "Function declared return type " +
+            TypeTable::instance().getTypeName(declaredRetTid) +
+            " but returned " + TypeTable::instance().getTypeName(retTid));
     }
 
-    result_ = returnVal;
+    result_ = declaredRetTid == TYPE_VOID ? Value{} : returnVal;
 }
 
 } // namespace eval

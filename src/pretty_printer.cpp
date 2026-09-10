@@ -119,9 +119,7 @@ void PrettyPrinter::visit(FnLitExpr& node) {
         output_ << node.params[i].first << " " << node.params[i].second;
     }
     output_ << ")";
-    if (node.returnType) {
-        output_ << " " << *node.returnType;
-    }
+    output_ << " " << node.returnType;
     output_ << " ";
     node.body->accept(*this);
 }
@@ -136,8 +134,11 @@ void PrettyPrinter::visit(CallExpr& node) {
 }
 
 void PrettyPrinter::visit(ReturnStmt& node) {
-    output_ << "return ";
-    node.value->accept(*this);
+    output_ << "return";
+    if (node.value) {
+        output_ << " ";
+        node.value->accept(*this);
+    }
     output_ << ";";
 }
 

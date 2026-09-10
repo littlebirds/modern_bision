@@ -84,6 +84,18 @@ TEST_CASE("LLVM backend: compiles nested and empty arrays", "[llvm][array]") {
     CHECK(compileToIR("let empty = []; 0;").find("[0 x i8]") != std::string::npos);
 }
 
+TEST_CASE("LLVM backend: emits void functions and returns", "[llvm][function][void]") {
+    std::string ir = compileToIR(
+        "let noop = fn() void { return; }; noop();");
+    CHECK(ir.find("define internal void") != std::string::npos);
+    CHECK(ir.find("ret void") != std::string::npos);
+    CHECK(ir.find("call void") != std::string::npos);
+}
+
+TEST_CASE("LLVM backend: void functions may fall through", "[llvm][function][void]") {
+    CHECK_NOTHROW(compileToIR("let noop = fn() void { }; noop();"));
+}
+
 TEST_CASE("Semantic analysis: rejects an out-of-bounds array index", "[semantic][array]") {
     CHECK_THROWS_WITH(
         analyze("let values = [1, 2]; values[2];"),

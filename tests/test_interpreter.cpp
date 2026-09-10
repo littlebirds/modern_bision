@@ -482,18 +482,26 @@ TEST_CASE("Interpreter: function with bool return type", "[interpreter][function
     CHECK(val.asBool() == true);
 }
 
-TEST_CASE("Interpreter: function with no return type (inferred)", "[interpreter][function]") {
-    auto val = interpret("let double = fn(x int) { x + x; }; double(21);");
-    REQUIRE(val.isInt());
-    CHECK(val.asInt() == 42);
+TEST_CASE("Interpreter: function return type is required", "[interpreter][function]") {
+    REQUIRE_THROWS_AS(
+        interpret("let double = fn(x int) { x + x; }; double(21);"),
+        std::runtime_error);
 }
 
-TEST_CASE("Interpreter: inferred return type enforced on second call", "[interpreter][function]") {
-    // First call returns int, second call must also return int
-    // The function always returns int, so this is fine
-    auto val = interpret("let id = fn(x int) { x; }; id(1); id(2);");
-    REQUIRE(val.isInt());
-    CHECK(val.asInt() == 2);
+TEST_CASE("Interpreter: void function supports empty return", "[interpreter][function][void]") {
+    auto val = interpret("let noop = fn() void { return; }; noop();");
+    CHECK(val.isNull());
+}
+
+TEST_CASE("Interpreter: void function may fall through", "[interpreter][function][void]") {
+    auto val = interpret("let noop = fn() void { }; noop();");
+    CHECK(val.isNull());
+}
+
+TEST_CASE("Interpreter: void function rejects returned value", "[interpreter][function][void]") {
+    REQUIRE_THROWS_AS(
+        interpret("let invalid = fn() void { return 1; }; invalid();"),
+        std::runtime_error);
 }
 
 TEST_CASE("Interpreter: function with explicit return", "[interpreter][function]") {

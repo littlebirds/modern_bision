@@ -33,6 +33,7 @@ static llvm::Type* toLLVMType(TypeId tid, llvm::LLVMContext& ctx) {
         case TYPE_FLOAT:  return llvm::Type::getDoubleTy(ctx);
         case TYPE_BOOL:   return llvm::Type::getInt1Ty(ctx);
         case TYPE_STRING: return llvm::PointerType::getUnqual(ctx);
+        case TYPE_VOID:   return llvm::Type::getVoidTy(ctx);
         default:          return llvm::Type::getVoidTy(ctx);
     }
 }
@@ -124,7 +125,7 @@ void LLVMGen::beginFn(llvm::Function* fn, TypeId retTid) {
         else if (arg.getType()->isIntegerTy(1)) tid = TYPE_BOOL;
         scope_->define(arg.getName().str(), Sym{tid, a, nullptr, true});
     }
-    if (retTid != TYPE_NULL) {
+    if (retTid != TYPE_VOID) {
         auto* retType = toLLVMType(retTid, *ctx_);
         retAlloca_ = entryAlloca(retType, "retval");
         // Initialize retAlloca to zero to avoid reading uninitialized memory
@@ -139,7 +140,7 @@ void LLVMGen::beginFn(llvm::Function* fn, TypeId retTid) {
 void LLVMGen::finishFn(TypeId retTid) {
     // If the current block has no terminator, branch to return block (or emit ret directly)
     if (!bld_->GetInsertBlock()->getTerminator()) {
-        if (retTid == TYPE_NULL) {
+        if (retTid == TYPE_VOID) {
             bld_->CreateRetVoid();
         } else if (retAlloca_) {
             // Store the last expression value as implicit return
@@ -313,7 +314,7 @@ void LLVMGen::visit(ast::FnLitExpr& n) {
     auto* fn = declareFn(n);
     auto savedFn = curFn_; auto savedRA = retAlloca_; auto savedRB = retBlock_;
     auto savedIP = bld_->saveIP();
-    TypeId retTid = n.returnType ? TypeTable::resolveTypeName(*n.returnType) : TYPE_INT;
+    TypeId retTid = TypeTable::resolveTypeName(n.returnType);
     beginFn(fn, retTid);
     enterScope();
     n.body->accept(*this);
@@ -333,7 +334,9 @@ void LLVMGen::visit(ast::CallExpr& n) {
     if (!cf) throw std::runtime_error("Indirect calls not yet supported");
     std::vector<llvm::Value*> args;
     if (n.arguments) for (auto& a : n.arguments->exprs) args.push_back(visitExpr(*a));
-    val_ = bld_->CreateCall(cf, args, "calltmp");
+    val_ = cf->getReturnType()->isVoidTy()
+        ? bld_->CreateCall(cf, args)
+        : bld_->CreateCall(cf, args, "calltmp");
 }
 
 // --- statement visitors ---
@@ -394,16 +397,20 @@ void LLVMGen::visit(ast::WhileStmt& n) {
 }
 
 void LLVMGen::visit(ast::ReturnStmt& n) {
-    auto* v = visitExpr(*n.value);
-    if (retAlloca_) { bld_->CreateStore(v, retAlloca_); bld_->CreateBr(retBlock_); }
-    else bld_->CreateRet(v);
+    if (!n.value) {
+        bld_->CreateRetVoid();
+    } else {
+        auto* v = visitExpr(*n.value);
+        if (retAlloca_) { bld_->CreateStore(v, retAlloca_); bld_->CreateBr(retBlock_); }
+        else bld_->CreateRet(v);
+    }
     bld_->SetInsertPoint(llvm::BasicBlock::Create(*ctx_, "unreach", curFn_));
 }
 
 // --- helpers ---
 
 llvm::Function* LLVMGen::declareFn(ast::FnLitExpr& n) {
-    TypeId retTid = n.returnType ? TypeTable::resolveTypeName(*n.returnType) : TYPE_INT;
+    TypeId retTid = TypeTable::resolveTypeName(n.returnType);
     std::vector<llvm::Type*> pts;
     std::vector<std::string> pns;
     for (auto& [name, tn] : n.params) {
@@ -424,7 +431,7 @@ void LLVMGen::compileLetFn(ast::LetExpr& n, ast::FnLitExpr& fnLit) {
     scope_->define(n.ident, Sym{TYPE_UNKNOWN, a, fn, true});
     auto savedFn = curFn_; auto savedRA = retAlloca_; auto savedRB = retBlock_;
     auto savedIP = bld_->saveIP();
-    TypeId retTid = fnLit.returnType ? TypeTable::resolveTypeName(*fnLit.returnType) : TYPE_INT;
+    TypeId retTid = TypeTable::resolveTypeName(fnLit.returnType);
     beginFn(fn, retTid);
     enterScope();
     fnLit.body->accept(*this);

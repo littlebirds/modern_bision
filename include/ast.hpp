@@ -247,19 +247,19 @@ struct IfStmt : public Stmt {
 
 struct FnLitExpr : public Expr {
     std::vector<std::pair<std::string, std::string>> params; // (name, type_name) pairs
-    std::optional<std::string> returnType; // nullopt if omitted (inferred)
+    std::string returnType;
     std::unique_ptr<BlockStmt> body;
 
     FnLitExpr(const monkey::location& loc,
               std::vector<std::pair<std::string, std::string>>* params,
-              std::optional<std::string> returnType,
+              std::string returnType,
               BlockStmt* body)
         : Expr(loc), params(std::move(*params)),
           returnType(std::move(returnType)), body(body) { delete params; }
 
     FnLitExpr(const monkey::location& loc,
               std::vector<std::pair<std::string, std::string>> params,
-              std::optional<std::string> returnType,
+              std::string returnType,
               std::unique_ptr<BlockStmt> body)
         : Expr(loc), params(std::move(params)),
           returnType(std::move(returnType)), body(std::move(body)) {}

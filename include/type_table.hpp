@@ -20,6 +20,7 @@ constexpr TypeId TYPE_NULL = 1;
 constexpr TypeId TYPE_STRING = 2;
 constexpr TypeId TYPE_BOOL = 3;
 constexpr TypeId TYPE_FLOAT = 4;
+constexpr TypeId TYPE_VOID = 5;
 constexpr TypeId TYPE_INT = 6;
 
 // User-defined types start from 100
@@ -149,6 +150,7 @@ public:
         if (name == "float") return TYPE_FLOAT;
         if (name == "string") return TYPE_STRING;
         if (name == "bool") return TYPE_BOOL;
+        if (name == "void") return TYPE_VOID;
         throw std::runtime_error("Unknown type: " + name);
     }
 
@@ -177,6 +179,7 @@ private:
         basicTypes_[TYPE_BOOL] = BuiltinType(TYPE_BOOL, "bool", sizeof(bool));
         basicTypes_[TYPE_INT] = BuiltinType(TYPE_INT, "int", sizeof(int64_t));
         basicTypes_[TYPE_FLOAT] = BuiltinType(TYPE_FLOAT, "float", sizeof(double));
+        basicTypes_[TYPE_VOID] = BuiltinType(TYPE_VOID, "void", 0);
         // Object types
         basicTypes_[TYPE_STRING] = BuiltinType(TYPE_STRING, "string", sizeof(void*));
     }

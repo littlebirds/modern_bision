@@ -36,6 +36,24 @@ interface, so the compiler is a **parallel implementation** — same visitor
 pattern, different `visit()` bodies that emit LLVM IR instead of computing
 `Value` results.
 
+### Function Return Types
+
+Every function literal must declare its return type after the parameter list:
+
+```monkey
+fn(value int) int { value; }
+```
+
+Return-type inference is not part of the language. Omitting the type is a parse
+error. Functions that do not return a value declare `void` and may use an empty
+return statement:
+
+```monkey
+fn() void { return; }
+```
+
+`void` is distinct from the runtime `null` value and cannot be used as a value.
+
 ### Active Record / Call Frame
 
 The interpreter gets "active records" for free from C++'s call stack — each
@@ -223,8 +241,8 @@ Currently `value_ = nullptr` at merge (if-expression support is a TODO).
 
 **WhileStmt** — three blocks (cond, body, exit). Loop body branches back to cond.
 
-**ReturnStmt** — stores value to `returnAlloca_`, branches to `returnBlock_`.
-If no return handling (void function), emits `CreateRet(val)` directly.
+**ReturnStmt** — value returns store into `returnAlloca_` and branch to
+`returnBlock_`; an empty return in a `void` function emits `CreateRetVoid()`.
 
 **Implicit return** — after compiling a function body, if the block has no
 terminator, checks `value_` (result of last expression), stores it to

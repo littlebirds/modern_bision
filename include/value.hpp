@@ -181,13 +181,11 @@ public:
         : paramNames_(std::move(paramNames)),
           paramTypeIds_(std::move(paramTypeIds)),
           declaredReturnTypeId_(declaredReturnTypeId),
-          inferredReturnTypeId_(TYPE_UNKNOWN),
           body_(std::move(body)) {}
 
     TypeId getTypeId() const override {
-        TypeId retTid = (declaredReturnTypeId_ != TYPE_UNKNOWN)
-            ? declaredReturnTypeId_ : inferredReturnTypeId_;
-        return TypeTable::instance().getFunctionTypeId(paramTypeIds_, retTid);
+        return TypeTable::instance().getFunctionTypeId(
+            paramTypeIds_, declaredReturnTypeId_);
     }
 
     std::string toString() const override {
@@ -198,11 +196,7 @@ public:
             ss << paramNames_[i] << " " << TypeTable::instance().getTypeName(paramTypeIds_[i]);
         }
         ss << ")";
-        TypeId retTid = (declaredReturnTypeId_ != TYPE_UNKNOWN)
-            ? declaredReturnTypeId_ : inferredReturnTypeId_;
-        if (retTid != TYPE_UNKNOWN) {
-            ss << " " << TypeTable::instance().getTypeName(retTid);
-        }
+        ss << " " << TypeTable::instance().getTypeName(declaredReturnTypeId_);
         ss << " { ... }";
         return ss.str();
     }
@@ -212,15 +206,12 @@ public:
     const std::vector<std::string>& paramNames() const { return paramNames_; }
     const std::vector<TypeId>& paramTypeIds() const { return paramTypeIds_; }
     TypeId declaredReturnTypeId() const { return declaredReturnTypeId_; }
-    TypeId inferredReturnTypeId() const { return inferredReturnTypeId_; }
-    void setInferredReturnTypeId(TypeId tid) { inferredReturnTypeId_ = tid; }
     ast::BlockStmt* body() const { return body_.get(); }
 
 private:
     std::vector<std::string> paramNames_;
     std::vector<TypeId> paramTypeIds_;
     TypeId declaredReturnTypeId_;
-    TypeId inferredReturnTypeId_;
     std::unique_ptr<ast::BlockStmt> body_;
 };
 
