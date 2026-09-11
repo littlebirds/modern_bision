@@ -9,6 +9,7 @@
 #include "compiler.hpp"
 #include "passes/semantic_pass.hpp"
 #include "passes/llvm_ir_pass.hpp"
+#include "passes/mem2reg_pass.hpp"
 
 void banner() {
     std::cout << "Monkey Programming Language R.E.P.L" << std::endl;
@@ -189,6 +190,7 @@ int main(int argc, char** argv) {
             c.ast = stmtList;
             c.addPass("semantic",   eval::semanticAnalysis);
             c.addPass("llvm-ir-gen", eval::llvmIRGen);
+            c.addPass("mem2reg", eval::mem2reg); // Scaffold: currently leaves IR unchanged.
             c.run();
             if (c.module)
                 c.module->print(llvm::errs(), nullptr);

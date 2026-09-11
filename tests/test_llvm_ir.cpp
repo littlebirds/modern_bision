@@ -11,6 +11,7 @@
 #include "ast.hpp"
 #include "compiler.hpp"
 #include "passes/llvm_ir_pass.hpp"
+#include "passes/mem2reg_pass.hpp"
 #include "passes/semantic_pass.hpp"
 
 namespace {
@@ -35,6 +36,7 @@ std::string compileToIR(const std::string& input) {
     compiler.ast = program;
     eval::semanticAnalysis(compiler);
     eval::llvmIRGen(compiler);
+    eval::mem2reg(compiler);
 
     std::string verificationError;
     llvm::raw_string_ostream errorStream(verificationError);

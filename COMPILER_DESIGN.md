@@ -254,10 +254,17 @@ LLVM optimization normally runs after initial IR construction. SSA form makes
 the producer of each value explicit, which allows passes to propagate facts
 through uses, phi nodes, and control-flow edges.
 
+The table follows a conceptual pipeline: stack/aggregate promotion, local
+simplification and expression preparation, constant propagation, control-flow
+cleanup, redundancy elimination, loop optimization, then dead-code cleanup.
+This is not a universal strict LLVM pipeline; simplification and cleanup can
+repeat as other passes expose new opportunities. `sroa` can also promote the
+stack slots it handles, so its work overlaps with `mem2reg`.
+
 | Pass | Purpose | Useful concept to study |
 |---|---|---|
-| `mem2reg` | Promotes eligible stack slots created by `alloca` into SSA registers and inserts phi nodes | SSA construction and dominance frontiers |
 | `sroa` | Splits aggregate and scalar stack objects into independently optimizable values | Aggregate lowering and escape analysis |
+| `mem2reg` | Promotes eligible stack slots created by `alloca` into SSA registers and inserts phi nodes | SSA construction and dominance frontiers |
 | `instcombine` | Folds constants and rewrites instruction patterns into canonical forms | Local algebraic simplification and LLVM poison/overflow rules |
 | `reassociate` | Reorders associative expressions to expose constants and common subexpressions | Expression trees and legal reassociation |
 | `sccp` | Propagates constants while discovering executable control-flow edges | Data-flow lattices and sparse conditional constant propagation |
@@ -303,6 +310,18 @@ if (strncmp(mode, "-c", 2) == 0) {
 
 The `compile()` method wraps the program in an implicit `main() → i64` function,
 so `-c` output is a valid LLVM module with a callable `main`.
+
+The current named-pass pipeline in `main.cpp` runs semantic analysis, LLVM IR
+generation, then `eval::mem2reg` (`include/passes/mem2reg_pass.hpp` and
+`src/passes/mem2reg_pass.cpp`). **mem2reg is currently a no-op scaffold**: it
+requires a generated module and visits defined functions, but leaves all IR
+unchanged. Promotion eligibility checks, replacing stack loads/stores with SSA
+values, phi insertion at merges, and removal of promoted allocas remain TODOs.
+LLVM's promotion utilities can provide the eventual implementation.
+
+The intended starter optimization order is `mem2reg → instcombine → sccp →
+simplifycfg → adce`. Only the mem2reg scaffold is wired in; the other optimization
+passes are not implemented or registered here.
 
 ---
 

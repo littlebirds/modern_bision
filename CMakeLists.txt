@@ -36,6 +36,7 @@ add_executable(monkey
     src/interpreter.cpp
     src/passes/semantic_pass.cpp
     src/passes/llvm_ir_pass.cpp
+    src/passes/mem2reg_pass.cpp
     ${BISON_MonkeyParser_OUTPUTS} ${FLEX_MonkeyScanner_OUTPUTS})
 
 target_include_directories(monkey PRIVATE

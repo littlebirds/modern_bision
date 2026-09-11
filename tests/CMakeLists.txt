@@ -9,6 +9,7 @@ add_executable(test_runner
     ${CMAKE_SOURCE_DIR}/src/interpreter.cpp
     ${CMAKE_SOURCE_DIR}/src/passes/semantic_pass.cpp
     ${CMAKE_SOURCE_DIR}/src/passes/llvm_ir_pass.cpp
+    ${CMAKE_SOURCE_DIR}/src/passes/mem2reg_pass.cpp
     ${CMAKE_BINARY_DIR}/Parser.cpp
     ${CMAKE_BINARY_DIR}/Scanner.cpp
 )
